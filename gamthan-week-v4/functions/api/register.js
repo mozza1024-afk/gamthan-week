@@ -35,6 +35,13 @@ export async function onRequest(context) {
     const existing = await dbRequest(context.env, `participants?select=id&phone=eq.${encodeURIComponent(phone)}&limit=1`);
     if (existing.length) throw new Error('이미 신청된 휴대전화번호입니다.');
 
+    // 화면 버튼뿐 아니라 실제 신청 API에서도 온라인 100명 제한을 다시 확인합니다.
+    // 데이터베이스 트리거(05-final-safety.sql)가 동시 신청까지 최종 차단합니다.
+    const rawLimit = Number(settings.ONLINE_APPLICATION_LIMIT || 100);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.floor(rawLimit) : 100;
+    const onlineRows = await dbRequest(context.env, 'participants?select=id&registration_source=eq.online&status=neq.cancelled');
+    if (onlineRows.length >= limit) throw new Error(`온라인 신청 정원 ${limit}명이 마감되었습니다.`);
+
     const pin = phone.slice(-4);
     const secured = await hashPin(pin);
     const rows = await dbRequest(context.env, 'participants', {
@@ -48,7 +55,7 @@ export async function onRequest(context) {
         organization_id: organizationId,
         course_days: courseDays,
         start_date: startDate,
-        end_date: startDate,
+        end_date: addDays(startDate, courseDays - 1),
         registration_source: 'online',
         status: today < startDate ? 'scheduled' : 'active',
         privacy_consent: true,

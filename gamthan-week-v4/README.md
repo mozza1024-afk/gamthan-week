@@ -1,4 +1,4 @@
-# 감탄위크 마라톤 – 나의 감탄일기 v3
+# 감탄위크 마라톤 – 나의 감탄일기 v4 FINAL
 
 명륜종합사회복지관·온기동행 감탄위크 마라톤 시민 참여 웹앱입니다.
 
@@ -27,7 +27,7 @@ GitHub 저장소를 Cloudflare Pages에 연결합니다.
 - Framework preset: `None`
 - Build command: `exit 0`
 - Build output directory: `public`
-- Root directory: 비워두기
+- Root directory: `gamthan-week-v4`
 
 Pages Functions는 저장소 루트의 `/functions` 폴더에서 자동 배포됩니다.
 
@@ -66,3 +66,14 @@ SQL로 바꾸려면 `database/04-application-period.sql` 파일의 날짜 두 �
 - 참여 신청 시 별도 비밀번호 입력 없음
 - 로그인 비밀번호는 신청 휴대전화번호 뒤 4자리
 - Cloudflare Web Crypto PBKDF2 제한에 맞춰 100,000 iterations 사용
+
+
+## v4 FINAL 추가사항
+- 카카오톡/SNS 링크 미리보기(Open Graph) 설정
+- 공유 대표이미지 `public/assets/share-preview.png` 추가 (1200×630)
+- 온라인 신청 화면 제한 + 신청 API 재검사
+- `database/05-final-safety.sql`로 동시 신청까지 DB에서 100명 하드 제한
+- 참여 신청 시 `end_date`를 코스 종료일로 서버에서도 명시 저장
+
+## 최종 공개 전에 한 번만 실행
+Supabase SQL Editor에서 `database/05-final-safety.sql` 전체를 실행하면 온라인 신청 정원이 100명으로 고정되고, 동시에 신청이 몰려도 101번째 신청을 데이터베이스에서 차단합니다.

@@ -11,7 +11,8 @@ export async function onRequest(context) {
       effectiveToday(context.env),
     ]);
 
-    const limit = Number(settings.ONLINE_APPLICATION_LIMIT || 100);
+    const rawLimit = Number(settings.ONLINE_APPLICATION_LIMIT || 100);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.floor(rawLimit) : 100;
     const count = participants.length;
     const devMode = Boolean(String(settings.DEV_TEST_DATE || '').trim());
     const withinApplication = devMode || (today >= settings.APPLICATION_START_DATE && today <= settings.APPLICATION_END_DATE);
