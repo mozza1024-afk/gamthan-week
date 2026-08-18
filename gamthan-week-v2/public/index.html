@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f8ed">
+  <title>감탄위크 마라톤–나의 감탄일기</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <div id="loading" class="loading hidden" aria-live="polite">
+    <div class="spinner"></div>
+    <p id="loadingText">불러오는 중...</p>
+  </div>
+
+  <main class="app-shell">
+    <section id="homeView" class="view active">
+      <header class="brand-header">
+        <img src="/assets/myungnyun-logo.png" alt="명륜종합사회복지관" class="myung-logo">
+      </header>
+
+      <section class="hero-card">
+        <img src="/assets/ongi-logo.png" alt="온기동행" class="ongi-logo">
+        <p class="eyebrow">제2회 온기동행 공모전</p>
+        <h1>감탄위크 마라톤</h1>
+        <p class="hero-subtitle">매일 한 가지 탄소중립 실천을 기록하며<br>나만의 감탄일기를 완주해요.</p>
+
+        <div class="hero-rule">
+          <span>7일</span><span>14일</span><span>21일</span><span>28일</span>
+        </div>
+
+        <div class="photo-notice">
+          <strong>📸 완주 시 실천 인증사진 1장 필수</strong>
+          <span>실천하며 찍어둔 사진을 최대 3장까지 올릴 수 있어요.</span>
+          <small>얼굴이 나오지 않아도 괜찮아요.</small>
+        </div>
+
+        <div class="status-card">
+          <div><span>신청기간</span><strong id="applicationPeriod">-</strong></div>
+          <div><span>실천기간</span><strong id="activityPeriod">-</strong></div>
+          <div><span>온라인 신청</span><strong id="capacityText">-</strong></div>
+        </div>
+
+        <div id="devBadge" class="dev-badge hidden">개발 테스트 모드</div>
+        <p id="homeMessage" class="home-message">앱 정보를 불러오고 있어요.</p>
+
+        <button id="applicationButton" class="button primary" type="button" disabled>참여 신청하기</button>
+        <button id="loginButton" class="button secondary" type="button">감탄일기 로그인</button>
+      </section>
+
+      <footer class="footer">명륜종합사회복지관 × 온기동행</footer>
+    </section>
+
+    <section id="registerView" class="view">
+      <button class="back-link" data-home type="button">← 처음 화면으로</button>
+      <section class="panel">
+        <h2>참여 신청하기</h2>
+        <p class="panel-intro">신청 후 휴대전화번호와 숫자 4자리 비밀번호로 매일 로그인합니다.</p>
+        <form id="registerForm" class="form-grid">
+          <label>이름 또는 별명 <b>*</b><input id="displayName" maxlength="30" required placeholder="예: 최미정"></label>
+          <label>휴대전화번호 <b>*</b><input id="phone" inputmode="tel" maxlength="13" required placeholder="010-1234-5678"></label>
+          <label>비밀번호 4자리 <b>*</b><input id="pin" type="password" inputmode="numeric" maxlength="4" required placeholder="숫자 4자리"></label>
+          <label>비밀번호 확인 <b>*</b><input id="pinConfirm" type="password" inputmode="numeric" maxlength="4" required placeholder="같은 숫자 4자리"></label>
+          <label>소속기관 <b>*</b><select id="organizationId" required><option value="">기관을 불러오는 중...</option></select></label>
+
+          <fieldset>
+            <legend>실천 코스 <b>*</b></legend>
+            <div class="course-grid">
+              <label class="choice"><input type="radio" name="courseDays" value="7"><span><strong>7일</strong><small>1주</small></span></label>
+              <label class="choice"><input type="radio" name="courseDays" value="14"><span><strong>14일</strong><small>2주</small></span></label>
+              <label class="choice"><input type="radio" name="courseDays" value="21"><span><strong>21일</strong><small>3주</small></span></label>
+              <label class="choice"><input type="radio" name="courseDays" value="28"><span><strong>28일</strong><small>4주</small></span></label>
+            </div>
+          </fieldset>
+
+          <label>실천 시작일 <b>*</b><input id="startDate" type="date" required disabled><small id="startDateHelp">먼저 실천 코스를 선택해 주세요.</small></label>
+
+          <label class="consent-box">
+            <input id="privacyConsent" type="checkbox" required>
+            <span><strong>개인정보 수집·이용에 동의합니다.</strong><small id="privacyText">이름/별명, 휴대전화번호, 소속기관, 참여기록을 공모전 운영에 사용합니다.</small></span>
+          </label>
+
+          <button class="button primary" type="submit">이 내용으로 신청하기</button>
+        </form>
+      </section>
+    </section>
+
+    <section id="registerDoneView" class="view">
+      <section class="panel center-panel">
+        <div class="big-icon">🎉</div>
+        <h2>참여 신청 완료!</h2>
+        <p>이제 신청한 휴대전화번호와 비밀번호로 로그인하면 됩니다.</p>
+        <div class="summary-card">
+          <div><span>참여코드</span><strong id="doneCode">-</strong></div>
+          <div><span>실천기간</span><strong id="donePeriod">-</strong></div>
+        </div>
+        <button id="doneLoginButton" class="button primary" type="button">바로 로그인하기</button>
+        <button class="button secondary" data-home type="button">처음 화면으로</button>
+      </section>
+    </section>
+
+    <section id="loginView" class="view">
+      <button class="back-link" data-home type="button">← 처음 화면으로</button>
+      <section class="panel">
+        <h2>감탄일기 로그인</h2>
+        <p class="panel-intro">신청할 때 입력한 휴대전화번호와 비밀번호 4자리를 입력해 주세요.</p>
+        <form id="loginForm" class="form-grid">
+          <label>휴대전화번호<input id="loginPhone" inputmode="tel" maxlength="13" required placeholder="010-1234-5678"></label>
+          <label>비밀번호<input id="loginPin" type="password" inputmode="numeric" maxlength="4" required placeholder="숫자 4자리"></label>
+          <button class="button primary" type="submit">로그인하기</button>
+        </form>
+      </section>
+    </section>
+
+    <section id="dashboardView" class="view">
+      <button class="back-link" data-home type="button">← 처음 화면으로</button>
+      <section class="panel dashboard-panel">
+        <div class="dashboard-title-row">
+          <div>
+            <p class="eyebrow">나의 감탄일기</p>
+            <h2><span id="dashboardName">-</span>님의 감탄위크</h2>
+          </div>
+          <button id="logoutButton" class="text-button" type="button">로그아웃</button>
+        </div>
+
+        <div class="summary-card">
+          <div><span>참여 상태</span><strong id="dashboardStatus">-</strong></div>
+          <div><span>참여 코스</span><strong id="dashboardCourse">-</strong></div>
+          <div><span>실천 기간</span><strong id="dashboardPeriod">-</strong></div>
+        </div>
+
+        <div class="progress-block">
+          <div class="progress-label"><strong id="progressText">0 / 7일</strong><span id="progressPercent">0%</span></div>
+          <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+        </div>
+
+        <div id="todayCard" class="today-card">
+          <strong id="todayTitle">오늘</strong>
+          <p id="todayMessage">오늘의 참여 상태를 확인하고 있어요.</p>
+        </div>
+
+        <button id="writeDiaryButton" class="button primary" type="button" disabled>오늘의 감탄일기 쓰기</button>
+
+        <section id="completionSection" class="completion-section hidden">
+          <h3>🏁 완주 마지막 단계</h3>
+          <p id="completionMessage">일기를 모두 작성했어요. 실천 인증사진을 등록하면 완주입니다.</p>
+          <label class="photo-picker">
+            <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+            <span>📷 인증사진 선택하기</span>
+            <small>최소 1장 · 최대 3장 · 업로드 전에 자동 압축</small>
+          </label>
+          <div id="photoPreview" class="photo-preview"></div>
+          <button id="uploadPhotosButton" class="button accent" type="button">사진 등록하고 완주하기</button>
+        </section>
+
+        <section class="history-section">
+          <div class="section-heading"><h3>나의 기록</h3><span id="historyCount">0개</span></div>
+          <div id="historyList" class="history-list"><p class="empty">아직 작성한 감탄일기가 없습니다.</p></div>
+        </section>
+      </section>
+    </section>
+
+    <section id="diaryView" class="view">
+      <button id="diaryBackButton" class="back-link" type="button">← 나의 감탄일기로</button>
+      <section class="panel">
+        <p class="eyebrow" id="diaryDayLabel">오늘의 기록</p>
+        <h2>오늘의 감탄일기</h2>
+        <p id="diaryDateLabel" class="panel-intro">-</p>
+        <form id="diaryForm" class="form-grid">
+          <fieldset>
+            <legend>오늘 실천한 행동 <b>*</b></legend>
+            <div id="actionList" class="action-list"></div>
+          </fieldset>
+          <label id="otherActionWrap" class="hidden">기타 실천 내용<input id="otherActionText" maxlength="100" placeholder="오늘의 나만의 실천을 적어주세요."></label>
+          <label>감탄일기 <b>*</b><textarea id="diaryText" minlength="10" maxlength="500" required placeholder="오늘 무엇을 실천했고, 어떤 느낌이 들었나요?"></textarea><small><span id="diaryLength">0</span>/500자 · 최소 10자</small></label>
+          <button class="button primary" type="submit">오늘의 기록 저장하기</button>
+        </form>
+      </section>
+    </section>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
