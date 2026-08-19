@@ -257,3 +257,101 @@ export function friendlyError(error) {
   if (message.includes('diaries_participant_id_diary_date_key')) return '오늘 일기는 이미 작성되어 있습니다.';
   return message;
 }
+
+// ===== 관리자 전용 기능 =====
+const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 8;
+
+export function getAdminPassword(env) {
+  const password = String(env.ADMIN_PASSWORD || '').trim();
+  if (!password) throw new Error('ADMIN_PASSWORD가 설정되지 않았습니다. Cloudflare의 변수와 비밀에서 관리자 비밀번호를 등록해 주세요.');
+  if (password.length < 8) throw new Error('ADMIN_PASSWORD는 8자 이상으로 설정해 주세요.');
+  return password;
+}
+
+async function digestText(text) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text))));
+}
+
+function equalBytes(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+export async function verifyAdminPassword(env, input) {
+  const [a, b] = await Promise.all([digestText(String(input || '')), digestText(getAdminPassword(env))]);
+  return equalBytes(a, b);
+}
+
+async function adminSessionKey(env) {
+  const source = `gamthan-admin:${getSecret(env)}:${getAdminPassword(env)}`;
+  const raw = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
+  return crypto.subtle.importKey('raw', raw, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+export async function createAdminSession(env) {
+  const payload = {
+    role: 'admin',
+    exp: Math.floor(Date.now() / 1000) + ADMIN_SESSION_TTL_SECONDS,
+  };
+  const payloadText = bytesToBase64Url(new TextEncoder().encode(JSON.stringify(payload)));
+  const sig = await crypto.subtle.sign('HMAC', await adminSessionKey(env), new TextEncoder().encode(payloadText));
+  return `${payloadText}.${bytesToBase64Url(new Uint8Array(sig))}`;
+}
+
+export async function verifyAdminSession(env, request) {
+  const auth = request.headers.get('authorization') || '';
+  if (!auth.startsWith('Bearer ')) throw unauthorized('관리자 로그인이 필요합니다.');
+  const token = auth.slice(7).trim();
+  const [payloadText, sigText] = token.split('.');
+  if (!payloadText || !sigText) throw unauthorized('관리자 로그인이 필요합니다.');
+
+  const ok = await crypto.subtle.verify(
+    'HMAC',
+    await adminSessionKey(env),
+    base64UrlToBytes(sigText),
+    new TextEncoder().encode(payloadText),
+  );
+  if (!ok) throw unauthorized('관리자 로그인이 필요합니다.');
+
+  let payload;
+  try { payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(payloadText))); }
+  catch { throw unauthorized('관리자 로그인이 필요합니다.'); }
+  if (payload.role !== 'admin' || Number(payload.exp) < Math.floor(Date.now() / 1000)) {
+    throw unauthorized('관리자 로그인 시간이 만료되었습니다. 다시 로그인해 주세요.');
+  }
+  return payload;
+}
+
+export async function dbRequestPaged(env, path, pageSize = 1000, maxPages = 10) {
+  const all = [];
+  for (let page = 0; page < maxPages; page++) {
+    const start = page * pageSize;
+    const end = start + pageSize - 1;
+    const rows = await dbRequest(env, path, { headers: { Range: `${start}-${end}` } });
+    const arr = Array.isArray(rows) ? rows : [];
+    all.push(...arr);
+    if (arr.length < pageSize) break;
+  }
+  return all;
+}
+
+export async function createSignedPhotoUrl(env, storagePath, expiresIn = 300, downloadName = '') {
+  const path = String(storagePath || '').split('/').map(encodeURIComponent).join('/');
+  const response = await fetch(`${PROJECT_URL}/storage/v1/object/sign/${STORAGE_BUCKET}/${path}`, {
+    method: 'POST',
+    headers: {
+      apikey: getSecret(env),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ expiresIn: Math.max(60, Math.min(Number(expiresIn) || 300, 3600)) }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.signedURL) {
+    throw new Error(body?.message || body?.error || '인증사진 주소를 만들지 못했습니다.');
+  }
+  let url = `${PROJECT_URL}/storage/v1${body.signedURL}`;
+  if (downloadName) url += `&download=${encodeURIComponent(sanitizeFileName(downloadName))}`;
+  return url;
+}

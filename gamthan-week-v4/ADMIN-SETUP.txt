@@ -1,0 +1,27 @@
+감탄위크 관리자 화면 설정 — 딱 1개만 추가
+
+1) GitHub의 기존 gamthan-week-v4 폴더를 이 폴더 내용으로 덮어쓰기/업로드 후 Commit
+   - Cloudflare Root directory는 gamthan-week-v4 그대로 둡니다.
+   - GitHub 변경 후 Cloudflare Pages가 자동 배포됩니다.
+
+2) Cloudflare > gamthan-week > 설정(Settings) > 변수와 비밀(Variables and Secrets) > + 추가
+   이름: ADMIN_PASSWORD
+   값: 본인이 정한 관리자 비밀번호 (8자 이상, 참여자 PIN과 다르게)
+   종류: Secret / 비밀 / Encrypt
+   저장 후 최신 배포를 한 번 다시 배포(Retry deployment)하세요.
+
+관리자 주소
+https://gamthan-week.pages.dev/admin.html
+
+관리자 기능
+- 신청자 총원/진행/완주/전체 일기/인증사진 현황
+- 이름·전화번호·기관 검색
+- 기관/코스/상태 필터
+- 신청자 상세: 전체 감탄일기 + 실천항목 + 인증사진
+- 신청자 CSV / 감탄일기 CSV 다운로드 (엑셀에서 바로 열림)
+- 인증사진 보기 및 다운로드
+
+주의
+- ADMIN_PASSWORD 값은 GitHub 코드에 적지 마세요.
+- ADMIN_PASSWORD를 채팅으로 보내지 마세요.
+- Supabase의 SUPABASE_SECRET_KEY도 기존처럼 Cloudflare Secret에만 보관합니다.

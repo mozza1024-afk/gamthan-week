@@ -77,3 +77,8 @@ SQL로 바꾸려면 `database/04-application-period.sql` 파일의 날짜 두 �
 
 ## 최종 공개 전에 한 번만 실행
 Supabase SQL Editor에서 `database/05-final-safety.sql` 전체를 실행하면 온라인 신청 정원이 100명으로 고정되고, 동시에 신청이 몰려도 101번째 신청을 데이터베이스에서 차단합니다.
+
+## 관리자 화면
+관리자 주소: `/admin.html`
+
+Cloudflare Pages의 Settings > Variables and Secrets에서 `ADMIN_PASSWORD`를 Secret으로 추가해야 합니다. 8자 이상을 권장하며 참여자 PIN과 다르게 설정하세요. 관리자 화면에서는 신청자 현황, 감탄일기, 실천항목, 완주 인증사진을 확인하고 신청자/일기 CSV를 다운로드할 수 있습니다.

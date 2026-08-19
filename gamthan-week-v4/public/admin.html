@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#f5f8ed">
+  <title>감탄위크 관리자</title>
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <div id="loading" class="loading hidden"><div class="spinner"></div><p>불러오는 중...</p></div>
+
+  <main class="admin-shell">
+    <section id="loginSection" class="login-card">
+      <img src="/assets/ongi-logo.png" alt="온기동행" class="login-logo">
+      <p class="eyebrow">감탄위크 마라톤</p>
+      <h1>관리자 로그인</h1>
+      <p class="muted">신청자·감탄일기·완주 인증사진을 확인합니다.</p>
+      <form id="adminLoginForm">
+        <label>관리자 비밀번호<input id="adminPassword" type="password" minlength="8" required autocomplete="current-password" placeholder="관리자 비밀번호"></label>
+        <button type="submit" class="button primary">관리자 화면 열기</button>
+      </form>
+      <p class="tiny">관리자 비밀번호는 Cloudflare Secret에만 저장됩니다.</p>
+    </section>
+
+    <section id="dashboardSection" class="hidden">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">감탄위크 마라톤</p>
+          <h1>관리자 현황</h1>
+          <p id="todayText" class="muted"></p>
+        </div>
+        <button id="logoutButton" class="button ghost">로그아웃</button>
+      </header>
+
+      <section class="stats" id="stats"></section>
+
+      <section class="toolbar card">
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="이름·전화번호·기관 검색">
+          <select id="orgFilter"><option value="">전체 기관</option></select>
+          <select id="courseFilter"><option value="">전체 코스</option><option value="7">7일</option><option value="14">14일</option><option value="21">21일</option><option value="28">28일</option></select>
+          <select id="statusFilter"><option value="">전체 상태</option><option value="scheduled">시작 전</option><option value="active">진행 중</option><option value="completed">완주</option><option value="ended">기간 종료</option><option value="cancelled">취소</option></select>
+        </div>
+        <div class="export-row">
+          <button id="participantCsvButton" class="button secondary">신청자 엑셀(CSV)</button>
+          <button id="diaryCsvButton" class="button secondary">감탄일기 엑셀(CSV)</button>
+        </div>
+      </section>
+
+      <section class="card table-card">
+        <div class="section-title"><h2>신청자</h2><span id="resultCount">0명</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>이름</th><th>기관</th><th>코스</th><th>진행</th><th>상태</th><th>인증사진</th><th></th></tr></thead>
+            <tbody id="participantBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="detailSection" class="card detail-card hidden"></section>
+    </section>
+  </main>
+  <script src="/admin.js" defer></script>
+</body>
+</html>
