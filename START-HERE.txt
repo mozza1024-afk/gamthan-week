@@ -1,0 +1,22 @@
+감탄위크 Vercel판 시작 순서
+
+1) 이 폴더(gamthan-week-vercel)를 GitHub 저장소 최상위에 업로드
+   - 기존 gamthan-week-v4는 삭제하지 않음
+
+2) Supabase > SQL Editor > New query
+   database/01-vercel-upgrade.sql 전체 붙여넣기 > Run
+   - 기존 데이터는 삭제하지 않음
+   - 생년월일 로그인용 컬럼/관리자/오프라인 6개 지점 테이블만 추가
+
+3) Vercel > Add New Project > GitHub의 gamthan-week 저장소 Import
+   Root Directory: gamthan-week-vercel
+
+4) Vercel Environment Variables 두 개 등록
+   SUPABASE_SECRET_KEY = 기존 Supabase Secret key
+   ADMIN_SETUP_CODE = 본인이 정한 8자 이상 초기 설정 코드
+   (두 값 모두 ChatGPT에 보내지 않기)
+
+5) 배포 후 /admin 접속
+   '처음 한 번만: 명륜 전체관리자 만들기' 실행
+
+※ 기존 Cloudflare 버전은 백업으로 계속 유지합니다.
