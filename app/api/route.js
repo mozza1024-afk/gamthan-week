@@ -16,6 +16,11 @@ async function bodyJson(request) {
 }
 function q(v) { return encodeURIComponent(String(v ?? '')); }
 function err(error, fallback=400) { return json({ success:false, message:friendly(error) }, error?.status || fallback); }
+function settingBool(settings,key,fallback=false){
+  const raw=settings?.[key];
+  if(raw===undefined||raw===null||String(raw).trim()==='') return fallback;
+  return String(raw).trim().toLowerCase()==='true';
+}
 
 async function getParticipant(id) {
   const rows = await dbRequest(`participants?select=*&id=eq.${q(id)}&limit=1`);
@@ -62,7 +67,8 @@ async function publicData() {
   const count=(participants||[]).length;
   const devMode=Boolean(String(settings.DEV_TEST_DATE||'').trim());
   const within=devMode || (today>=settings.APPLICATION_START_DATE && today<=settings.APPLICATION_END_DATE);
-  return json({success:true,today,devMode,applicationOpen:within&&count<limit,applicationStartDate:settings.APPLICATION_START_DATE,applicationEndDate:settings.APPLICATION_END_DATE,activityStartDate:settings.ACTIVITY_START_DATE,activityEndDate:settings.ACTIVITY_END_DATE,privacyRetentionDate:settings.PRIVACY_RETENTION_DATE||'',onlineApplicationLimit:limit,onlineApplicationCount:count,onlineApplicationRemaining:Math.max(0,limit-count),organizations,actions});
+  const course28Open=settingBool(settings,'COURSE_28_OPEN',false);
+  return json({success:true,today,devMode,applicationOpen:within&&count<limit,applicationStartDate:settings.APPLICATION_START_DATE,applicationEndDate:settings.APPLICATION_END_DATE,activityStartDate:settings.ACTIVITY_START_DATE,activityEndDate:settings.ACTIVITY_END_DATE,privacyRetentionDate:settings.PRIVACY_RETENTION_DATE||'',onlineApplicationLimit:limit,onlineApplicationCount:count,onlineApplicationRemaining:Math.max(0,limit-count),course28Open,organizations,actions});
 }
 
 async function register(request) {
@@ -82,22 +88,31 @@ async function register(request) {
   const [settings,today]=await Promise.all([readSettings(),effectiveToday()]);
   const dev=Boolean(String(settings.DEV_TEST_DATE||'').trim());
   if(!dev&&(today<settings.APPLICATION_START_DATE||today>settings.APPLICATION_END_DATE)) throw new Error('현재는 온라인 신청 기간이 아닙니다.');
+  if(courseDays===28&&!settingBool(settings,'COURSE_28_OPEN',false)) throw new Error('28일 코스 신청은 마감되었습니다. 7일·14일·21일 코스를 선택해 주세요.');
   if(startDate<settings.ACTIVITY_START_DATE||addDays(startDate,courseDays-1)>settings.ACTIVITY_END_DATE) throw new Error('선택한 코스가 실천기간 안에 끝나도록 시작일을 선택해 주세요.');
   const [org,existing,online]=await Promise.all([
     dbRequest(`organizations?select=id,organization_name&id=eq.${q(organizationId)}&is_active=eq.true&limit=1`),
-    dbRequest(`participants?select=id&phone=eq.${q(phone)}&limit=1`),
+    dbRequest(`participants?select=id,status&phone=eq.${q(phone)}&limit=1`),
     dbRequest('participants?select=id&registration_source=eq.online&status=neq.cancelled'),
   ]);
   if(!org?.[0]) throw new Error('유효한 소속기관을 선택해 주세요.');
-  if(existing?.length) throw new Error('이미 신청된 휴대전화번호입니다.');
+  if(existing?.[0]&&existing[0].status!=='cancelled') throw new Error('이미 신청된 휴대전화번호입니다.');
   const limit=Math.max(1,Number(settings.ONLINE_APPLICATION_LIMIT||100));
   if((online||[]).length>=limit) throw new Error(`온라인 신청 정원 ${limit}명이 마감되었습니다.`);
   const secured=await hashValue(birth6);
-  const rows=await dbRequest('participants',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({
+  const payload={
     display_name:displayName,phone,pin_hash:secured.hash,pin_salt:secured.salt,birth_hash:secured.hash,birth_salt:secured.salt,
-    organization_id:organizationId,organization_name_snapshot:org[0].organization_name,course_days:courseDays,start_date:startDate,end_date:addDays(startDate,courseDays-1),registration_source:'online',status:today<startDate?'scheduled':'active',privacy_consent:true,privacy_consent_at:new Date().toISOString(),privacy_consent_version:'2026-08-birth-v1'
-  })});
-  return json({success:true,message:'감탄위크 참여 신청이 완료되었습니다.',participantCode:rows?.[0]?.participant_code||'',startDate,endDate:addDays(startDate,courseDays-1)});
+    organization_id:organizationId,organization_name_snapshot:org[0].organization_name,course_days:courseDays,start_date:startDate,end_date:addDays(startDate,courseDays-1),registration_source:'online',status:today<startDate?'scheduled':'active',privacy_consent:true,privacy_consent_at:new Date().toISOString(),privacy_consent_version:'2026-08-birth-v1',failed_login_count:0,locked_until:null,is_completed:false
+  };
+  let participantCode='';
+  if(existing?.[0]?.status==='cancelled'){
+    const rows=await dbRequest(`participants?id=eq.${q(existing[0].id)}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(payload)});
+    participantCode=rows?.[0]?.participant_code||'';
+  }else{
+    const rows=await dbRequest('participants',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(payload)});
+    participantCode=rows?.[0]?.participant_code||'';
+  }
+  return json({success:true,message:'감탄위크 참여 신청이 완료되었습니다.',participantCode,startDate,endDate:addDays(startDate,courseDays-1)});
 }
 
 async function participantLogin(request){
@@ -169,12 +184,12 @@ async function adminDashboard(request){
   const ps=(participants||[]).filter(p=>a.role==='super_admin'||String(p.organization_id)===String(a.org)); const ids=new Set(ps.map(p=>String(p.id))); const rawDs=(diaries||[]).filter(d=>ids.has(String(d.participant_id))); const ph=(photos||[]).filter(x=>ids.has(String(x.participant_id))); const ss=(sites||[]).filter(s=>adminAllowedSite(a,s)); const siteIds=new Set(ss.map(s=>String(s.id))); const es=(entries||[]).filter(e=>siteIds.has(String(e.site_id)));
   const actionName=Object.fromEntries((actions||[]).map(x=>[x.action_code,x.action_name])); const diaryActionMap={}; for(const x of diaryActions||[]){if(!diaryActionMap[x.diary_id])diaryActionMap[x.diary_id]=[];diaryActionMap[x.diary_id].push({code:x.action_code,name:actionName[x.action_code]||x.action_code});} const ds=rawDs.map(d=>({...d,actions:diaryActionMap[d.id]||[]}));
   const lastDiary={}; for(const d of ds){const k=String(d.participant_id); if(!lastDiary[k]||d.diary_date>lastDiary[k]) lastDiary[k]=d.diary_date;}
-  const today=await effectiveToday(); const threeAgo=addDays(today,-3); const enriched=ps.map(p=>{const pc=ph.filter(x=>String(x.participant_id)===String(p.id)).length;const dc=ds.filter(x=>String(x.participant_id)===String(p.id)).length;const needs=!p.is_completed&&(!lastDiary[String(p.id)]||lastDiary[String(p.id)]<=threeAgo);const {phone,...rest}=p;return {...rest,phone_masked:String(phone||'').replace(/(010)-\d{4}-(\d{4})/,'$1-****-$2'),contact_phone:needs?phone:null,diary_count:dc,photo_count:pc,last_diary_date:lastDiary[String(p.id)]||null,needs_followup:needs};});
+  const today=await effectiveToday(); const threeAgo=addDays(today,-3); const enriched=ps.map(p=>{const pc=ph.filter(x=>String(x.participant_id)===String(p.id)).length;const dc=ds.filter(x=>String(x.participant_id)===String(p.id)).length;const needs=!p.is_completed&&(!lastDiary[String(p.id)]||lastDiary[String(p.id)]<=threeAgo);const digits=String(p.phone||'').replace(/\D/g,'');const phoneMasked=digits.replace(/^(010)(\d{4})(\d{4})$/,'$1-****-$3');const {phone,...rest}=p;return {...rest,phone_masked:phoneMasked,contact_phone:needs?digits:null,diary_count:dc,photo_count:pc,last_diary_date:lastDiary[String(p.id)]||null,needs_followup:needs};});
   const siteStats=ss.map(s=>{const rows=es.filter(e=>String(e.site_id)===String(s.id));const distributed=rows.reduce((n,e)=>n+Number(e.distributed_qty||0),0);const submitted=rows.reduce((n,e)=>n+Number(e.submitted_qty||0),0);return {...s,distributed_qty:distributed,submitted_qty:submitted,remaining_qty:Math.max(0,Number(s.allocated_quantity||0)-distributed),last_report_at:rows[0]?.created_at||null};});
   const offlineTarget=Number(settings.OFFLINE_DIARY_TOTAL||300); const offlineDistributed=siteStats.reduce((n,s)=>n+s.distributed_qty,0); const offlineSubmitted=siteStats.reduce((n,s)=>n+s.submitted_qty,0);
   const adminOrganizations=[...(organizations||[]).map(o=>({id:String(o.id),organization_name:o.organization_name}))]; for(const site of ss){if(!adminOrganizations.some(o=>String(o.id)===String(site.organization_id)))adminOrganizations.push({id:String(site.organization_id),organization_name:site.organization_name});}
   await audit(a,'read_dashboard','dashboard','',{participantCount:enriched.length});
-  return json({success:true,admin:a,settings,organizations,adminOrganizations,stats:{onlineCount:enriched.length,completedCount:enriched.filter(p=>p.is_completed).length,diaryCount:ds.length,photoCount:ph.length,followupCount:enriched.filter(p=>p.needs_followup).length,offlineTarget,offlineDistributed,offlineRemaining:Math.max(0,offlineTarget-offlineDistributed),offlineSubmitted},participants:enriched,diaries:ds,photos:ph.map(x=>({id:x.id,participant_id:x.participant_id,photo_no:x.photo_no,created_at:x.created_at})),siteStats});
+  return json({success:true,admin:a,settings:{...settings,COURSE_28_OPEN:String(settings.COURSE_28_OPEN||'false')},organizations,adminOrganizations,stats:{onlineCount:enriched.length,completedCount:enriched.filter(p=>p.is_completed).length,diaryCount:ds.length,photoCount:ph.length,followupCount:enriched.filter(p=>p.needs_followup).length,offlineTarget,offlineDistributed,offlineRemaining:Math.max(0,offlineTarget-offlineDistributed),offlineSubmitted},participants:enriched,diaries:ds,photos:ph.map(x=>({id:x.id,participant_id:x.participant_id,photo_no:x.photo_no,created_at:x.created_at})),siteStats});
 }
 async function adminDistribution(request){
   const a=await requireAdmin(request), b=await bodyJson(request); const siteId=String(b.siteId||''); const sites=await dbRequest(`offline_sites?select=*&id=eq.${q(siteId)}&is_active=eq.true&limit=1`); const site=sites?.[0]; if(!site||!adminAllowedSite(a,site)) throw Object.assign(new Error('이 배포지점을 관리할 권한이 없습니다.'),{status:403});
@@ -182,13 +197,24 @@ async function adminDistribution(request){
   const entryDate=String(b.entryDate||await effectiveToday()); await dbRequest('offline_distribution_entries',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({site_id:site.id,organization_id:String(site.organization_id||''),entry_date:entryDate,distributed_qty:distributed,submitted_qty:submitted,note:String(b.note||'').trim().slice(0,200)||null,entered_by_admin_id:String(a.sub)})}); await audit(a,'write_distribution','offline_site',site.id,{distributed,submitted,entryDate}); return json({success:true,message:'배포·제출 수량을 등록했습니다.'});
 }
 async function adminUpdateSettings(request){
-  const a=await requireAdmin(request); if(a.role!=='super_admin') throw Object.assign(new Error('전체관리자만 설정을 변경할 수 있습니다.'),{status:403}); const b=await bodyJson(request); const allowed=['APPLICATION_START_DATE','APPLICATION_END_DATE','ACTIVITY_START_DATE','ACTIVITY_END_DATE','ONLINE_APPLICATION_LIMIT','OFFLINE_DIARY_TOTAL']; const updates=b.settings||{};
-  for(const k of allowed){if(updates[k]!==undefined){await dbRequest(`app_settings?setting_key=eq.${q(k)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({setting_value:String(updates[k]),updated_at:new Date().toISOString()})});}}
+  const a=await requireAdmin(request); if(a.role!=='super_admin') throw Object.assign(new Error('전체관리자만 설정을 변경할 수 있습니다.'),{status:403});
+  const b=await bodyJson(request); const allowed=['APPLICATION_START_DATE','APPLICATION_END_DATE','ACTIVITY_START_DATE','ACTIVITY_END_DATE','ONLINE_APPLICATION_LIMIT','OFFLINE_DIARY_TOTAL','COURSE_28_OPEN']; const updates=b.settings||{};
+  const settingRows=allowed.filter(k=>updates[k]!==undefined).map(k=>({setting_key:k,setting_value:String(updates[k]),updated_at:new Date().toISOString()}));
+  if(settingRows.length) await dbRequest('app_settings?on_conflict=setting_key',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(settingRows)});
   if(Array.isArray(b.siteAllocations)){for(const row of b.siteAllocations){const qty=Number(row.allocatedQuantity);if(Number.isInteger(qty)&&qty>=0)await dbRequest(`offline_sites?id=eq.${q(row.siteId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({allocated_quantity:qty,updated_at:new Date().toISOString()})});}}
-  await audit(a,'update_settings','settings',''); return json({success:true,message:'운영 설정을 저장했습니다.'});
+  await audit(a,'update_settings','settings','',{course28Open:String(updates.COURSE_28_OPEN??'')}); return json({success:true,message:'운영 설정을 저장했습니다.'});
 }
 async function adminCreateUser(request){
   const a=await requireAdmin(request); if(a.role!=='super_admin') throw Object.assign(new Error('전체관리자만 기관관리자 계정을 만들 수 있습니다.'),{status:403}); const b=await bodyJson(request); const email=String(b.email||'').trim().toLowerCase(),name=String(b.displayName||'').trim(),password=String(b.password||''),org=String(b.organizationId||'').trim(); if(!/^\S+@\S+\.\S+$/.test(email)||!name||password.length<10||!org) throw new Error('기관관리자 정보를 모두 입력해 주세요. 비밀번호는 10자 이상입니다.'); const exists=await dbRequest(`admin_users?select=id&email=eq.${q(email)}&limit=1`);if(exists?.length)throw new Error('이미 등록된 관리자 이메일입니다.'); const h=await hashValue(password); await dbRequest('admin_users',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({email,display_name:name,password_hash:h.hash,password_salt:h.salt,role:'org_admin',organization_id:org,is_active:true})}); await audit(a,'create_admin','admin_user','',{email,org}); return json({success:true,message:'기관관리자 계정을 만들었습니다.'});
+}
+async function adminCancelParticipant(request){
+  const a=await requireAdmin(request), b=await bodyJson(request); const id=String(b.participantId||'').trim(); if(!id) throw new Error('취소할 참가자를 선택해 주세요.');
+  const rows=await dbRequest(`participants?select=id,display_name,organization_id,status&id=eq.${q(id)}&limit=1`); const p=rows?.[0]; if(!p) throw new Error('참가자를 찾을 수 없습니다.');
+  if(a.role==='org_admin'&&String(p.organization_id)!==String(a.org)) throw Object.assign(new Error('이 참가자의 신청을 취소할 권한이 없습니다.'),{status:403});
+  if(p.status==='cancelled') return json({success:true,message:'이미 취소된 신청입니다.'});
+  await dbRequest(`participants?id=eq.${q(id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:'cancelled'})});
+  await audit(a,'cancel_participant','participant',id,{displayName:p.display_name});
+  return json({success:true,message:`${p.display_name}님의 신청을 취소했습니다.`});
 }
 async function adminPhoto(request, id){
   const a=await requireAdmin(request); const rows=await dbRequest(`completion_photos?select=id,participant_id,storage_path&id=eq.${q(id)}&limit=1`); const photo=rows?.[0]; if(!photo) throw new Error('사진을 찾을 수 없습니다.'); const ps=await dbRequest(`participants?select=organization_id&id=eq.${q(photo.participant_id)}&limit=1`); if(a.role==='org_admin'&&String(ps?.[0]?.organization_id)!==String(a.org)) throw Object.assign(new Error('이 사진을 볼 권한이 없습니다.'),{status:403}); const url=await signedPhotoUrl(photo.storage_path); await audit(a,'view_photo','completion_photo',id); return json({success:true,url});
@@ -216,6 +242,7 @@ export async function POST(request){
     if(key==='admin/distribution') return adminDistribution(request);
     if(key==='admin/settings') return adminUpdateSettings(request);
     if(key==='admin/create-user') return adminCreateUser(request);
+    if(key==='admin/cancel-participant') return adminCancelParticipant(request);
     return json({success:false,message:'Not found'},404);
   }catch(e){return err(e,400)}
 }
