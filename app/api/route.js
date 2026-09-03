@@ -128,7 +128,18 @@ async function participantLogin(request){
 }
 
 async function participantDashboard(request){
-  const s=await requireParticipant(request); const [p,today]=await Promise.all([getParticipant(s.sub),effectiveToday()]); if(!p) throw new Error('참여자 정보를 찾을 수 없습니다.');
+  const s=await requireParticipant(request);
+  const [p,today]=await Promise.all([
+    getParticipant(s.sub),
+    effectiveToday()
+  ]);
+
+  if(!p) throw new Error('참여자 정보를 찾을 수 없습니다.');
+
+  // 관리자가 신청을 취소한 경우, 기존 로그인 토큰이 남아 있어도 즉시 차단
+  if(p.status==='cancelled'){
+    throw new Error('신청이 취소되어 로그인할 수 없습니다.');
+  }
   const diaries=await getDiaries(p.id); const [by,photos]=await Promise.all([actionMapFor(diaries),dbRequest(`completion_photos?select=id,photo_no,created_at&participant_id=eq.${q(p.id)}&order=photo_no.asc`)]);
   const status=participantStatus(p,today); const todayDiary=(diaries||[]).find(d=>d.diary_date===today)||null; const complete=(diaries||[]).length>=Number(p.course_days);
   return json({success:true,today,participant:{id:p.id,displayName:p.display_name,organizationName:p.organization_name_snapshot,courseDays:p.course_days,startDate:p.start_date,endDate:p.end_date,status,completedDays:(diaries||[]).length,progressPercent:Math.min(100,Math.round(((diaries||[]).length/Number(p.course_days))*100)),isCompleted:p.is_completed,photoCount:(photos||[]).length},canWriteToday:status==='active',todayDiary:todayDiary?{...todayDiary,actions:by[todayDiary.id]||[]}:null,diaries:(diaries||[]).map(d=>({...d,actions:by[d.id]||[]})),completion:{diaryComplete:complete,canUploadPhotos:complete&&(photos||[]).length<3,photoCount:(photos||[]).length,needsPhoto:complete&&(photos||[]).length===0,complete:p.is_completed===true}});
@@ -147,8 +158,14 @@ async function saveDiary(request){
   await refreshProgress(p.id); return json({success:true,message:'오늘의 감탄일기를 저장했습니다.'});
 }
 
-async function completionPhotos(request){
-  const s=await requireParticipant(request); const p=await getParticipant(s.sub); if(!p) throw new Error('참여자 정보를 찾을 수 없습니다.');
+const s=await requireParticipant(request);
+const p=await getParticipant(s.sub);
+
+if(!p) throw new Error('참여자 정보를 찾을 수 없습니다.');
+
+if(p.status==='cancelled'){
+  throw new Error('신청이 취소되어 로그인할 수 없습니다.');
+}
   const diaries=await getDiaries(p.id); if((diaries||[]).length<Number(p.course_days)) throw new Error('선택한 코스의 감탄일기를 모두 작성한 뒤 인증사진을 등록할 수 있습니다.');
   const existing=await dbRequest(`completion_photos?select=id,photo_no&participant_id=eq.${q(p.id)}&order=photo_no.asc`); const form=await request.formData(); const files=form.getAll('photos').filter(v=>typeof v!=='string');
   if(!files.length) throw new Error('완주 인증사진을 1장 이상 선택해 주세요.'); if((existing||[]).length+files.length>3) throw new Error('인증사진은 최대 3장까지 등록할 수 있습니다.');
