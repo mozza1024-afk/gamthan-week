@@ -38,7 +38,7 @@ async function api(path, options={}){
   return data||{};
 }
 
-function auth(token){return token?{Authorization:`Bearer ${token}`}:{}}; 
+function auth(token){return token?{Authorization:`Bearer ${token}`}:{}};
 function calcEnd(start,days){
   if(!start||!days)return'';
   const d=new Date(`${start}T00:00:00`);
@@ -133,6 +133,10 @@ export default function Home(){
   }
 
   function chooseCourse(days){
+    if(days===28&&info?.course28Open===false){
+      say('28일 코스 신청은 마감되었습니다.');
+      return;
+    }
     setReg(r=>({...r,courseDays:String(days),startDate:''}));
   }
 
@@ -271,10 +275,16 @@ export default function Home(){
             <span>7일</span><span>14일</span><span>21일</span><span>28일</span>
           </div>
 
-          <div className="login-guide">
-            <strong>📅 28일 코스는 10월 4일까지 시작해 주세요.</strong><br/>
-            <span>모든 코스는 10월 31일까지 완주해야 합니다.</span>
-          </div>
+          {info?.course28Open===false
+            ?<div className="login-guide">
+              <strong>🏁 28일 코스 신청은 마감되었습니다.</strong><br/>
+              <span>7일·14일·21일 코스는 계속 신청할 수 있어요.</span>
+            </div>
+            :<div className="login-guide">
+              <strong>📅 28일 코스는 10월 4일까지 시작해 주세요.</strong><br/>
+              <span>모든 코스는 10월 31일까지 완주해야 합니다.</span>
+            </div>
+          }
 
           <div className="photo-notice">
             <strong>📸 완주 시 실천 인증사진 1장 필수</strong>
@@ -381,20 +391,23 @@ export default function Home(){
             <fieldset>
               <legend>실천 코스 <b>*</b></legend>
               <div className="course-grid">
-                {[7,14,21,28].map(n=>
-                  <label className="choice" key={n}>
+                {[7,14,21,28].map(n=>{
+                  const closed=n===28&&info?.course28Open===false;
+                  return <label className="choice" key={n} style={closed?{opacity:.52}:undefined}>
                     <input
                       type="radio"
                       checked={String(n)===reg.courseDays}
+                      disabled={closed}
                       onChange={()=>chooseCourse(n)}
                     />
                     <span>
                       <strong>{n}일</strong>
-                      <small>{n}KM</small>
+                      <small>{closed?'마감':`${n}KM`}</small>
                     </span>
-                  </label>
-                )}
+                  </label>;
+                })}
               </div>
+              {info?.course28Open===false&&<small><strong>※ 28일 코스는 신청 인원 증가로 접수를 마감했습니다.</strong></small>}
             </fieldset>
 
             <label>
@@ -529,10 +542,7 @@ export default function Home(){
               <span>{dash?.participant?.progressPercent||0}%</span>
             </div>
             <div className="progress-track">
-              <div
-                className="progress-bar"
-                style={{width:`${dash?.participant?.progressPercent||0}%`}}
-              />
+              <div className="progress-bar" style={{width:`${dash?.participant?.progressPercent||0}%`}}/>
             </div>
           </div>
 
@@ -547,11 +557,7 @@ export default function Home(){
             </p>
           </div>
 
-          <button
-            className="button primary"
-            disabled={!dash?.canWriteToday}
-            onClick={startDiary}
-          >
+          <button className="button primary" disabled={!dash?.canWriteToday} onClick={startDiary}>
             {dash?.todayDiary?'오늘의 감탄일기 수정하기':'오늘의 감탄일기 쓰기'}
           </button>
 
@@ -572,14 +578,10 @@ export default function Home(){
               </label>
 
               <div className="photo-preview">
-                {photos.map((f,i)=>
-                  <img key={i} src={URL.createObjectURL(f)} alt="미리보기"/>
-                )}
+                {photos.map((f,i)=><img key={i} src={URL.createObjectURL(f)} alt="미리보기"/>)}
               </div>
 
-              <button className="button accent" onClick={uploadPhotos}>
-                사진 등록하고 완주하기
-              </button>
+              <button className="button accent" onClick={uploadPhotos}>사진 등록하고 완주하기</button>
             </section>
           }
 
@@ -599,9 +601,7 @@ export default function Home(){
                       </summary>
                       <div className="history-body">{d.diary_text}</div>
                       <div className="tag-row">
-                        {d.actions?.map(a=>
-                          <span className="tag" key={a.code}>{a.name}</span>
-                        )}
+                        {d.actions?.map(a=><span className="tag" key={a.code}>{a.name}</span>)}
                       </div>
                     </details>
                   )
