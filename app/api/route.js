@@ -1422,9 +1422,9 @@ async function adminDashboard(request) {
         phone_masked:
           phoneMasked,
         contact_phone:
-          needs
-            ? digits
-            : null,
+  a.role === 'super_admin'
+    ? digits
+    : (needs ? digits : null),
         diary_count:
           dc,
         photo_count:
