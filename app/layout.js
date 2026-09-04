@@ -30,7 +30,6 @@ export default function RootLayout({
       <body>
         {children}
 
-        {/* 이전 테스트버전 신청자 전환 버튼 */}
         <button
           id="legacy-convert-open"
           type="button"
@@ -43,23 +42,34 @@ export default function RootLayout({
             zIndex: 9000,
             maxWidth: '520px',
             margin: '0 auto',
-            padding: '13px 16px',
-            border: '0',
+            padding: '15px 16px',
+            border: '2px solid #d6a400',
             borderRadius: '14px',
-            background: '#fff4c7',
+            background: '#ffe38a',
             color: '#294b32',
-            fontSize: '14px',
+            fontSize: '15px',
             fontWeight: '800',
+            lineHeight: 1.45,
             boxShadow:
-              '0 5px 20px rgba(0,0,0,.16)',
+              '0 6px 22px rgba(0,0,0,.2)',
             cursor: 'pointer',
           }}
         >
-          🔐 이전 테스트버전으로 신청하셨나요?
-          로그인 방식 변경하기
+          <span style={{ display: 'block' }}>
+            🔐 휴대전화번호 뒤 4자리로 로그인하셨나요?
+          </span>
+
+          <span
+            style={{
+              display: 'block',
+              marginTop: '3px',
+              fontSize: '13px'
+            }}
+          >
+            생년월일 6자리 로그인으로 변경하기 →
+          </span>
         </button>
 
-        {/* 전환창 */}
         <div
           id="legacy-convert-modal"
           style={{
@@ -76,8 +86,7 @@ export default function RootLayout({
           <div
             style={{
               maxWidth: '500px',
-              margin:
-                '40px auto',
+              margin: '40px auto',
               padding: '24px',
               background: '#ffffff',
               borderRadius: '20px',
@@ -108,12 +117,11 @@ export default function RootLayout({
 
                 <h2
                   style={{
-                    margin:
-                      '5px 0 8px',
+                    margin: '5px 0 8px',
                     fontSize: '22px',
                   }}
                 >
-                  이전 신청자 로그인 변경
+                  생년월일 로그인으로 변경
                 </h2>
               </div>
 
@@ -135,12 +143,14 @@ export default function RootLayout({
             <p
               style={{
                 lineHeight: 1.6,
-                margin:
-                  '0 0 18px',
+                margin: '0 0 18px',
               }}
             >
-              이전 테스트 페이지에서 신청하신
-              분들을 위한 안내입니다.
+              휴대전화번호 뒤 4자리로 로그인하셨다면,
+              현재 로그인 방식이 생년월일 6자리로 변경되어
+              <strong>
+                {' '}한 번의 로그인 전환이 필요합니다.
+              </strong>
               <br />
               <strong>
                 재신청은 하지 않으셔도 됩니다.
@@ -157,15 +167,15 @@ export default function RootLayout({
                 lineHeight: 1.6,
               }}
             >
-              기존 비밀번호인
+              휴대전화번호와 기존 비밀번호인
               <strong>
                 {' '}휴대전화번호 뒤 4자리
               </strong>
-              로 본인확인 후
+              로 본인확인 후,
               <strong>
                 {' '}생년월일 6자리
               </strong>
-              를 등록합니다.
+              를 등록해 주세요.
             </div>
 
             <form
@@ -174,8 +184,7 @@ export default function RootLayout({
               <label
                 style={{
                   display: 'block',
-                  margin:
-                    '12px 0 6px',
+                  margin: '12px 0 6px',
                   fontWeight: '700',
                 }}
               >
@@ -204,8 +213,7 @@ export default function RootLayout({
               <label
                 style={{
                   display: 'block',
-                  margin:
-                    '12px 0 6px',
+                  margin: '12px 0 6px',
                   fontWeight: '700',
                 }}
               >
@@ -235,8 +243,7 @@ export default function RootLayout({
               <label
                 style={{
                   display: 'block',
-                  margin:
-                    '12px 0 6px',
+                  margin: '12px 0 6px',
                   fontWeight: '700',
                 }}
               >
@@ -266,8 +273,7 @@ export default function RootLayout({
               <label
                 style={{
                   display: 'block',
-                  margin:
-                    '12px 0 6px',
+                  margin: '12px 0 6px',
                   fontWeight: '700',
                 }}
               >
@@ -302,17 +308,15 @@ export default function RootLayout({
                   marginTop: '18px',
                   padding: '14px',
                   border: 0,
-                  borderRadius:
-                    '12px',
-                  background:
-                    '#29854b',
+                  borderRadius: '12px',
+                  background: '#29854b',
                   color: '#fff',
                   fontWeight: '800',
                   fontSize: '16px',
                   cursor: 'pointer',
                 }}
               >
-                새 로그인 방식으로 변경하기
+                생년월일 로그인으로 변경하기
               </button>
             </form>
 
@@ -322,8 +326,7 @@ export default function RootLayout({
                 display: 'none',
                 marginTop: '16px',
                 padding: '14px',
-                borderRadius:
-                  '12px',
+                borderRadius: '12px',
                 lineHeight: 1.6,
                 fontWeight: '700',
               }}
@@ -331,8 +334,7 @@ export default function RootLayout({
 
             <p
               style={{
-                margin:
-                  '20px 0 0',
+                margin: '20px 0 0',
                 textAlign: 'center',
                 color: '#777',
                 fontSize: '13px',
@@ -452,8 +454,10 @@ export default function RootLayout({
         if (oldPin.length !== 4) {
           result.style.background =
             '#fff0f0';
+
           result.textContent =
             '⚠️ 기존 비밀번호인 휴대전화번호 뒤 4자리를 입력해 주세요.';
+
           return;
         }
 
@@ -463,8 +467,10 @@ export default function RootLayout({
         ) {
           result.style.background =
             '#fff0f0';
+
           result.textContent =
             '⚠️ 생년월일 6자리를 두 번 동일하게 입력해 주세요.';
+
           return;
         }
 
@@ -522,7 +528,7 @@ export default function RootLayout({
 
           submitBtn.disabled = false;
           submitBtn.textContent =
-            '새 로그인 방식으로 변경하기';
+            '생년월일 로그인으로 변경하기';
         }
       }
     );
