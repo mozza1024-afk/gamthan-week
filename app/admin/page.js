@@ -197,7 +197,7 @@ export default function AdminPage(){
   function csv(type){
     const rows=type==='participants'?participants:(data?.diaries||[]);
     const cols=type==='participants'
-      ?['display_name','phone_masked','organization_name_snapshot','course_days','start_date','end_date','diary_count','photo_count','is_completed']
+      ?['display_name','contact_phone','organization_name_snapshot','course_days','start_date','end_date','diary_count','photo_count','is_completed']
       :['participant_id','diary_date','day_number','diary_text','other_action_text'];
     const text='\ufeff'+[
       cols.join(','),
@@ -300,7 +300,7 @@ export default function AdminPage(){
     {tab==='participants'&&<section className="admin-card">
       <div className="section-heading">
         <h3>참가자</h3>
-        <div><button className="mini-button" onClick={()=>csv('participants')}>신청자 CSV</button> <button className="mini-button" onClick={()=>csv('diaries')}>일기 CSV</button></div>
+        <div><button className="mini-button" onClick={()=>csv('participants')}>신청자·연락처 CSV</button> <button className="mini-button" onClick={()=>csv('diaries')}>일기 CSV</button></div>
       </div>
       <div className="toolbar">
         <input placeholder="이름·기관 검색" value={search} onChange={e=>setSearch(e.target.value)}/>
