@@ -1,39 +1,16 @@
 import {
-  addDays,
-  adminSession,
-  audit,
-  dbRequest,
-  effectiveToday,
-  friendly,
-  hashValue,
-  json,
-  normalizePhone,
-  participantSession,
-  readSettings,
-  requireAdmin,
-  requireParticipant,
-  signedPhotoUrl,
-  uploadPhoto,
-  validBirth6,
-  validPhone,
-  verifyHash,
+  addDays, adminSession, audit, dbRequest, effectiveToday, friendly, hashValue, json,
+  normalizePhone, participantSession, readSettings, requireAdmin, requireParticipant,
+  signedPhotoUrl, uploadPhoto, validBirth6, validPhone, verifyHash,
 } from '../../lib/server.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-
 function pathParts(request) {
-  const raw =
-    new URL(request.url)
-      .searchParams
-      .get('path') || '';
-
-  return raw
-    .split('/')
-    .filter(Boolean);
+  const raw = new URL(request.url).searchParams.get('path') || '';
+  return raw.split('/').filter(Boolean);
 }
-
 
 async function bodyJson(request) {
   try {
@@ -43,35 +20,19 @@ async function bodyJson(request) {
   }
 }
 
-
 function q(v) {
-  return encodeURIComponent(
-    String(v ?? '')
-  );
+  return encodeURIComponent(String(v ?? ''));
 }
 
-
-function err(
-  error,
-  fallback = 400
-) {
+function err(error, fallback = 400) {
   return json(
-    {
-      success: false,
-      message: friendly(error)
-    },
+    { success: false, message: friendly(error) },
     error?.status || fallback
   );
 }
 
-
-function settingBool(
-  settings,
-  key,
-  fallback = false
-) {
-  const raw =
-    settings?.[key];
+function settingBool(settings, key, fallback = false) {
+  const raw = settings?.[key];
 
   if (
     raw === undefined ||
@@ -81,11 +42,52 @@ function settingBool(
     return fallback;
   }
 
-  return (
-    String(raw)
-      .trim()
-      .toLowerCase() === 'true'
-  );
+  return String(raw).trim().toLowerCase() === 'true';
+}
+
+
+/* ==================================================
+   대용량 데이터 페이지 읽기
+
+   Supabase/PostgREST에서 한 번에 가져오는 자료가
+   1,000건을 넘어가면 다음 1,000건을 계속 읽습니다.
+================================================== */
+
+async function dbPaged(path, pageSize = 1000) {
+  const all = [];
+  let offset = 0;
+
+  while (true) {
+    const separator =
+      path.includes('?')
+        ? '&'
+        : '?';
+
+    const rows =
+      await dbRequest(
+        `${path}${separator}limit=${pageSize}&offset=${offset}`
+      );
+
+    if (
+      !Array.isArray(rows) ||
+      rows.length === 0
+    ) {
+      break;
+    }
+
+    all.push(...rows);
+
+    if (
+      rows.length <
+      pageSize
+    ) {
+      break;
+    }
+
+    offset += pageSize;
+  }
+
+  return all;
 }
 
 
@@ -113,12 +115,12 @@ async function getDiaries(pid) {
 }
 
 
-async function actionMapFor(
-  diaries
-) {
+async function actionMapFor(diaries) {
   const ids =
     (diaries || [])
-      .map(d => d.id);
+      .map(
+        d => d.id
+      );
 
   if (!ids.length) {
     return {};
@@ -132,6 +134,7 @@ async function actionMapFor(
       dbRequest(
         `diary_actions?select=diary_id,action_code&diary_id=in.(${ids.join(',')})`
       ),
+
       dbRequest(
         'actions?select=action_code,action_name'
       ),
@@ -154,35 +157,41 @@ async function actionMapFor(
     const r of
     links || []
   ) {
-    if (!out[r.diary_id]) {
-      out[r.diary_id] = [];
+    if (
+      !out[
+        r.diary_id
+      ]
+    ) {
+      out[
+        r.diary_id
+      ] = [];
     }
 
-    out[r.diary_id]
-      .push({
-        code:
-          r.action_code,
+    out[
+      r.diary_id
+    ].push({
+      code:
+        r.action_code,
 
-        name:
-          map[
-            r.action_code
-          ] ||
+      name:
+        map[
           r.action_code
-      });
+        ] ||
+        r.action_code
+    });
   }
 
   return out;
 }
 
 
-async function refreshProgress(
-  pid
-) {
+async function refreshProgress(pid) {
   try {
     await dbRequest(
       'rpc/refresh_participant_progress',
       {
-        method: 'POST',
+        method:
+          'POST',
 
         body:
           JSON.stringify({
@@ -254,7 +263,6 @@ async function publicData() {
       effectiveToday(),
     ]);
 
-
   const limit =
     Math.max(
       1,
@@ -265,11 +273,9 @@ async function publicData() {
       )
     );
 
-
   const count =
     (participants || [])
       .length;
-
 
   const devMode =
     Boolean(
@@ -279,7 +285,6 @@ async function publicData() {
         ''
       ).trim()
     );
-
 
   const within =
     devMode ||
@@ -293,14 +298,12 @@ async function publicData() {
           .APPLICATION_END_DATE
     );
 
-
   const course28Open =
     settingBool(
       settings,
       'COURSE_28_OPEN',
       false
     );
-
 
   return json({
     success: true,
@@ -355,35 +358,31 @@ async function publicData() {
 }
 
 
-async function register(
-  request
-) {
+async function register(request) {
   const b =
     await bodyJson(
       request
     );
 
-
   const displayName =
     String(
-      b.displayName || ''
+      b.displayName ||
+      ''
     ).trim();
-
 
   const phone =
     normalizePhone(
       b.phone
     );
 
-
   const birth6 =
     String(
-      b.birth6 || ''
+      b.birth6 ||
+      ''
     ).replace(
       /\D/g,
       ''
     );
-
 
   const organizationId =
     String(
@@ -391,16 +390,15 @@ async function register(
       ''
     ).trim();
 
-
   const courseDays =
     Number(
       b.courseDays
     );
 
-
   const startDate =
     String(
-      b.startDate || ''
+      b.startDate ||
+      ''
     ).trim();
 
 
@@ -415,7 +413,9 @@ async function register(
 
 
   if (
-    !validPhone(phone)
+    !validPhone(
+      phone
+    )
   ) {
     throw new Error(
       '휴대전화번호를 확인해 주세요.'
@@ -702,7 +702,6 @@ async function register(
         }
       );
 
-
     participantCode =
       rows?.[0]
         ?.participant_code ||
@@ -728,7 +727,6 @@ async function register(
             )
         }
       );
-
 
     participantCode =
       rows?.[0]
@@ -756,24 +754,21 @@ async function register(
 }
 
 
-async function participantLogin(
-  request
-) {
+async function participantLogin(request) {
   const b =
     await bodyJson(
       request
     );
-
 
   const phone =
     normalizePhone(
       b.phone
     );
 
-
   const birth6 =
     String(
-      b.birth6 || ''
+      b.birth6 ||
+      ''
     ).replace(
       /\D/g,
       ''
@@ -796,7 +791,6 @@ async function participantLogin(
     await dbRequest(
       `participants?select=*&phone=eq.${q(phone)}&limit=1`
     );
-
 
   const p =
     rows?.[0];
@@ -857,8 +851,8 @@ async function participantLogin(
               new Date(
                 Date.now() +
                 10 *
-                  60 *
-                  1000
+                60 *
+                1000
               ).toISOString()
           }
         : {
@@ -926,14 +920,11 @@ async function participantLogin(
 }
 
 
-async function participantDashboard(
-  request
-) {
+async function participantDashboard(request) {
   const s =
     await requireParticipant(
       request
     );
-
 
   const [
     p,
@@ -1086,7 +1077,8 @@ async function participantDashboard(
             actions:
               by[
                 todayDiary.id
-              ] || []
+              ] ||
+              []
           }
         : null,
 
@@ -1128,27 +1120,23 @@ async function participantDashboard(
 }
 
 
-/* =========================================
+/* ==================================================
    감탄일기 저장
-   Supabase save_diary_atomic 함수 사용
-   같은 사람이 같은 날 두 번 저장해도
-   DB에는 일기 1건만 유지됩니다.
-========================================= */
 
-async function saveDiary(
-  request
-) {
+   Supabase save_diary_atomic 함수를 이용하여
+   한 사람의 같은 날짜 일기는 1건만 유지합니다.
+================================================== */
+
+async function saveDiary(request) {
   const s =
     await requireParticipant(
       request
     );
 
-
   const b =
     await bodyJson(
       request
     );
-
 
   const [
     p,
@@ -1308,14 +1296,11 @@ async function saveDiary(
 }
 
 
-async function completionPhotos(
-  request
-) {
+async function completionPhotos(request) {
   const s =
     await requireParticipant(
       request
     );
-
 
   const p =
     await getParticipant(
@@ -1382,7 +1367,9 @@ async function completionPhotos(
 
   const files =
     form
-      .getAll('photos')
+      .getAll(
+        'photos'
+      )
       .filter(
         v =>
           typeof v !==
@@ -1390,7 +1377,9 @@ async function completionPhotos(
       );
 
 
-  if (!files.length) {
+  if (
+    !files.length
+  ) {
     throw new Error(
       '완주 인증사진을 1장 이상 선택해 주세요.'
     );
@@ -1430,7 +1419,9 @@ async function completionPhotos(
         'image/jpeg',
         'image/png',
         'image/webp'
-      ].includes(mime)
+      ].includes(
+        mime
+      )
     ) {
       throw new Error(
         'JPG, PNG, WebP 사진만 등록할 수 있습니다.'
@@ -1452,11 +1443,9 @@ async function completionPhotos(
       mime ===
       'image/png'
         ? 'png'
-
         : mime ===
           'image/webp'
           ? 'webp'
-
           : 'jpg';
 
 
@@ -1534,9 +1523,7 @@ async function completionPhotos(
 }
 
 
-async function adminBootstrap(
-  request
-) {
+async function adminBootstrap(request) {
   const b =
     await bodyJson(
       request
@@ -1585,7 +1572,8 @@ async function adminBootstrap(
     String(
       b.setupCode ||
       ''
-    ) !== setup
+    ) !==
+    setup
   ) {
     throw Object.assign(
       new Error(
@@ -1623,12 +1611,14 @@ async function adminBootstrap(
 
   if (
     !/^\S+@\S+\.\S+$/
-      .test(email) ||
+      .test(
+        email
+      ) ||
 
     !name ||
 
     password.length <
-    10
+      10
   ) {
     throw new Error(
       '이메일, 이름, 10자 이상 비밀번호를 확인해 주세요.'
@@ -1688,9 +1678,7 @@ async function adminBootstrap(
 }
 
 
-async function adminLogin(
-  request
-) {
+async function adminLogin(request) {
   const b =
     await bodyJson(
       request
@@ -1807,9 +1795,14 @@ function adminAllowedSite(
 }
 
 
-async function adminDashboard(
-  request
-) {
+/* ==================================================
+   관리자 대시보드
+
+   일기/실천항목/사진/오프라인 기록은
+   dbPaged()로 1,000건씩 끝까지 가져옵니다.
+================================================== */
+
+async function adminDashboard(request) {
   const a =
     await requireAdmin(
       request
@@ -1828,32 +1821,33 @@ async function adminDashboard(
     organizations
   ] =
     await Promise.all([
+
       dbRequest(
         'participants?select=id,display_name,phone,organization_id,organization_name_snapshot,course_days,start_date,end_date,status,is_completed,created_at&status=neq.cancelled&order=created_at.desc'
       ),
 
-      dbRequest(
-        'diaries?select=id,participant_id,diary_date,day_number,diary_text,other_action_text,created_at,updated_at&order=diary_date.desc'
+      dbPaged(
+        'diaries?select=id,participant_id,diary_date,day_number,diary_text,other_action_text,created_at,updated_at&order=diary_date.desc,id.desc'
       ),
 
-      dbRequest(
-        'diary_actions?select=diary_id,action_code'
+      dbPaged(
+        'diary_actions?select=diary_id,action_code&order=diary_id.asc,action_code.asc'
       ),
 
       dbRequest(
         'actions?select=action_code,action_name'
       ),
 
-      dbRequest(
-        'completion_photos?select=id,participant_id,photo_no,storage_path,created_at'
+      dbPaged(
+        'completion_photos?select=id,participant_id,photo_no,storage_path,created_at&order=created_at.asc,id.asc'
       ),
 
       dbRequest(
         'offline_sites?select=*&is_active=eq.true&order=sort_order.asc'
       ),
 
-      dbRequest(
-        'offline_distribution_entries?select=*&order=entry_date.desc,created_at.desc'
+      dbPaged(
+        'offline_distribution_entries?select=*&order=entry_date.desc,created_at.desc,id.desc'
       ),
 
       readSettings(),
@@ -2014,7 +2008,8 @@ async function adminDashboard(
 
 
   for (
-    const d of ds
+    const d of
+    ds
   ) {
     const k =
       String(
@@ -2279,7 +2274,8 @@ async function adminDashboard(
 
 
   for (
-    const site of ss
+    const site of
+    ss
   ) {
     if (
       !adminOrganizations
@@ -2412,9 +2408,7 @@ async function adminDashboard(
 }
 
 
-async function adminDistribution(
-  request
-) {
+async function adminDistribution(request) {
   const a =
     await requireAdmin(
       request
@@ -2589,9 +2583,7 @@ async function adminDistribution(
 }
 
 
-async function adminUpdateSettings(
-  request
-) {
+async function adminUpdateSettings(request) {
   const a =
     await requireAdmin(
       request
@@ -2761,9 +2753,7 @@ async function adminUpdateSettings(
 }
 
 
-async function adminCreateUser(
-  request
-) {
+async function adminCreateUser(request) {
   const a =
     await requireAdmin(
       request
@@ -2923,9 +2913,7 @@ async function adminCreateUser(
 }
 
 
-async function adminCancelParticipant(
-  request
-) {
+async function adminCancelParticipant(request) {
   const a =
     await requireAdmin(
       request
@@ -3125,15 +3113,12 @@ async function adminPhoto(
 
   return json({
     success: true,
-
     url
   });
 }
 
 
-export async function GET(
-  request
-) {
+export async function GET(request) {
   try {
 
     const p =
@@ -3205,9 +3190,7 @@ export async function GET(
 }
 
 
-export async function POST(
-  request
-) {
+export async function POST(request) {
   try {
 
     const p =
