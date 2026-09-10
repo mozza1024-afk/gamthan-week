@@ -194,6 +194,122 @@
     </section>
   </main>
 
-  <script src="/app.js" defer></script>
-</body>
+<!-- 새 감탄위크 사이트 이동 안내 -->
+<div
+  id="new-site-popup"
+  style="
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    background:rgba(0,0,0,.58);
+    padding:20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  "
+>
+  <div
+    style="
+      width:100%;
+      max-width:460px;
+      background:#fff;
+      border-radius:20px;
+      padding:24px;
+      box-shadow:0 10px 35px rgba(0,0,0,.28);
+      text-align:center;
+    "
+  >
+    <div
+      style="
+        font-size:13px;
+        font-weight:800;
+        color:#2f824c;
+        margin-bottom:6px;
+      "
+    >
+      감탄위크 실천마라톤 안내
+    </div>
+
+    <h2
+      style="
+        margin:0 0 14px;
+        font-size:22px;
+        line-height:1.4;
+      "
+    >
+      🌱 새로운 감탄일기 사이트를 이용해 주세요
+    </h2>
+
+    <p
+      style="
+        margin:0;
+        font-size:15px;
+        line-height:1.7;
+        color:#333;
+      "
+    >
+      감탄위크 마라톤 사이트가
+      <strong>새로운 주소로 변경되었습니다.</strong>
+      <br><br>
+      기존 신청정보는 그대로 유지됩니다.
+      <br>
+      <strong>다시 신청하지 않으셔도 됩니다.</strong>
+    </p>
+
+    <div
+      style="
+        margin:16px 0;
+        padding:13px;
+        border-radius:12px;
+        background:#fff4bf;
+        font-size:14px;
+        line-height:1.6;
+        text-align:left;
+      "
+    >
+      🔐 기존에 <strong>휴대전화번호 뒤 4자리</strong>로
+      로그인하셨던 분은 새 사이트에서
+      <strong>생년월일 6자리 로그인으로 한 번만 변경</strong>해 주세요.
+    </div>
+
+    <a
+      href="https://gamthan-week.vercel.app/"
+      target="_blank"
+      rel="noopener noreferrer"
+      style="
+        display:block;
+        box-sizing:border-box;
+        width:100%;
+        padding:15px;
+        border-radius:12px;
+        background:#29854b;
+        color:#fff;
+        text-decoration:none;
+        font-size:16px;
+        font-weight:800;
+      "
+    >
+      새 감탄일기 사이트 열기 →
+    </a>
+
+    <button
+      type="button"
+      onclick="document.getElementById('new-site-popup').style.display='none'"
+      style="
+        width:100%;
+        margin-top:10px;
+        padding:12px;
+        border:0;
+        background:transparent;
+        color:#777;
+        font-size:14px;
+        cursor:pointer;
+      "
+    >
+      기존 사이트 잠시 이용하기
+    </button>
+  </div>
+</div>
+
+<script src="/app.js" defer></script></body>
 </html>
