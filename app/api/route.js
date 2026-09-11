@@ -1307,6 +1307,236 @@ async function completionPhotos(request) {
       s.sub
     );
 
+  if (!p) {
+    throw Object.assign(
+      new Error(
+        '로그인 정보를 확인할 수 없습니다.'
+      ),
+      {
+        status: 401
+      }
+    );
+  }
+
+  if (
+    p.status ===
+    'cancelled'
+  ) {
+    throw Object.assign(
+      new Error(
+        '신청이 취소되었습니다. 다시 로그인할 수 없습니다.'
+      ),
+      {
+        status: 401
+      }
+    );
+  }
+
+  const [
+    diaries,
+    today
+  ] =
+    await Promise.all([
+      getDiaries(
+        p.id
+      ),
+
+      effectiveToday()
+    ]);
+
+  const diaryComplete =
+    (diaries || [])
+      .length >=
+    Number(
+      p.course_days
+    );
+
+  /*
+    완주자는 일기를 모두 작성한 즉시 사진 등록 가능.
+    미완주자는 본인의 코스 마지막 날부터 사진 등록 가능.
+  */
+  const photoEligible =
+    diaryComplete ||
+    today >=
+      p.end_date;
+
+  if (!photoEligible) {
+    throw new Error(
+      '실천 사진은 일기를 모두 작성했거나, 선택한 코스의 마지막 날부터 등록할 수 있습니다.'
+    );
+  }
+
+  const existing =
+    await dbRequest(
+      `completion_photos?select=id,photo_no&participant_id=eq.${q(p.id)}&order=photo_no.asc`
+    );
+
+  const form =
+    await request
+      .formData();
+
+  const files =
+    form
+      .getAll(
+        'photos'
+      )
+      .filter(
+        v =>
+          typeof v !==
+          'string'
+      );
+
+  if (
+    !files.length
+  ) {
+    throw new Error(
+      '사진을 1장 이상 선택해 주세요.'
+    );
+  }
+
+  if (
+    (existing || [])
+      .length +
+      files.length >
+    3
+  ) {
+    throw new Error(
+      '사진은 최대 3장까지 등록할 수 있습니다.'
+    );
+  }
+
+  let no =
+    (existing || [])
+      .length + 1;
+
+  for (
+    const file of
+    files
+  ) {
+    const mime =
+      String(
+        file.type ||
+        ''
+      );
+
+    if (
+      ![
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+      ].includes(
+        mime
+      )
+    ) {
+      throw new Error(
+        'JPG, PNG, WebP 사진만 등록할 수 있습니다.'
+      );
+    }
+
+    if (
+      file.size >
+      1024 * 1024
+    ) {
+      throw new Error(
+        '압축 후 사진 1장은 1MB 이하여야 합니다.'
+      );
+    }
+
+    const ext =
+      mime ===
+      'image/png'
+        ? 'png'
+        : mime ===
+          'image/webp'
+          ? 'webp'
+          : 'jpg';
+
+    const path =
+      `${p.id}/${Date.now()}-${no}.${ext}`;
+
+    await uploadPhoto(
+      path,
+      file,
+      mime
+    );
+
+    await dbRequest(
+      'completion_photos',
+      {
+        method:
+          'POST',
+
+        headers: {
+          Prefer:
+            'return=minimal'
+        },
+
+        body:
+          JSON.stringify({
+            participant_id:
+              p.id,
+
+            photo_no:
+              no,
+
+            storage_path:
+              path,
+
+            original_file_name:
+              String(
+                file.name ||
+                'photo'
+              )
+                .replace(
+                  /[^a-zA-Z0-9._-]/g,
+                  '_'
+                )
+                .slice(
+                  -80
+                ),
+
+            mime_type:
+              mime,
+
+            file_size_bytes:
+              file.size
+          })
+      }
+    );
+
+    no++;
+  }
+
+  /*
+    일기를 모두 작성한 사람만
+    완주 여부를 다시 계산합니다.
+    미완주자는 사진을 올려도 완주 처리하지 않습니다.
+  */
+  if (diaryComplete) {
+    await refreshProgress(
+      p.id
+    );
+  }
+
+  return json({
+    success: true,
+
+    message:
+      diaryComplete
+        ? '완주 인증사진을 등록했습니다.'
+        : '실천 사진을 등록했습니다.'
+  });
+}
+  const s =
+    await requireParticipant(
+      request
+    );
+
+  const p =
+    await getParticipant(
+      s.sub
+    );
+
 
   if (!p) {
     throw Object.assign(
