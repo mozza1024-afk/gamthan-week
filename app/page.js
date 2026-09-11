@@ -105,7 +105,31 @@ function auth(token) {
     : {};
 }
 
+function previousDate(dateText) {
+  if (!dateText) return '';
 
+  const [y, m, d] =
+    String(dateText)
+      .split('-')
+      .map(Number);
+
+  const dt =
+    new Date(
+      Date.UTC(
+        y,
+        m - 1,
+        d
+      )
+    );
+
+  dt.setUTCDate(
+    dt.getUTCDate() - 1
+  );
+
+  return dt
+    .toISOString()
+    .slice(0, 10);
+}
 function calcEnd(
   start,
   days
@@ -2041,102 +2065,51 @@ export default function Home() {
 
                     ? '오늘의 감탄일기 수정하기'
 
-                    : '오늘의 감탄일기 쓰기'
+         {
+  dash?.today &&
+  dash?.participant?.startDate &&
+  previousDate(dash.today) >=
+    dash.participant.startDate &&
+  previousDate(dash.today) <=
+    dash.participant.endDate &&
+  !dash?.diaries?.some(
+    d =>
+      d.diary_date ===
+      previousDate(dash.today)
+  ) &&
+
+  <div
+    className="today-card"
+    style={{
+      background: '#fff2f2'
+    }}
+  >
+    <strong>
+      😢 어제 기록이 확인되지 않았어요.
+    </strong>
+
+    <p>
+      감탄위크는 연속 실천 방식이라
+      완주는 어렵게 되었습니다.
+      하지만 남은 기간의 실천은
+      계속 기록할 수 있답니다.
+    </p>
+  </div>
+}           : '오늘의 감탄일기 쓰기'
                 }
               </button>
 
 
-              {
-                dash
-                  ?.completion
-                  ?.diaryComplete &&
+{
+  dash
+    ?.completion
+    ?.diaryComplete &&
 
-                !dash
-                  ?.completion
-                  ?.complete &&
+  !dash
+    ?.completion
+    ?.complete &&
 
-                <section className="completion-section">
-
-                  <h3>
-                    🏁 완주 마지막 단계
-                  </h3>
-
-
-                  <p>
-                    일기를 모두 작성했어요. 실천 인증사진을 등록하면 완주입니다.
-                  </p>
-
-
-                  <label className="photo-picker">
-
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      disabled={busy}
-                      onChange={
-                        e =>
-                          setPhotos(
-                            [
-                              ...e.target.files
-                            ].slice(
-                              0,
-                              3
-                            )
-                          )
-                      }
-                    />
-
-                    <span>
-                      📷 인증사진 선택하기
-                    </span>
-
-                    <small>
-                      최소 1장 · 최대 3장 · 자동 압축
-                    </small>
-
-                  </label>
-
-
-                  <div className="photo-preview">
-
-                    {
-                      photos.map(
-                        (
-                          f,
-                          i
-                        ) =>
-                          <img
-                            key={i}
-                            src={
-                              URL.createObjectURL(
-                                f
-                              )
-                            }
-                            alt="미리보기"
-                          />
-                      )
-                    }
-
-                  </div>
-
-
-                  <button
-                    className="button accent"
-                    disabled={busy}
-                    onClick={
-                      uploadPhotos
-                    }
-                  >
-                    {
-                      busy
-                        ? '사진 등록 중...'
-                        : '사진 등록하고 완주하기'
-                    }
-                  </button>
-
-                </section>
-              }
+  <section className="completion-section">
 
 
               <section className="history-section">
