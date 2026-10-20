@@ -61,7 +61,7 @@ export default function Restart(){
     <input type="tel" inputMode="tel" autoComplete="tel" required placeholder="01012345678" value={login.phone} onChange={e=>setLogin(v=>({...v,phone:e.target.value}))} style={{display:'block',marginTop:5,width:'100%',boxSizing:'border-box',border:'1px solid #b9cdbd',borderRadius:10,padding:13,fontSize:16}}/>
    </label>
    <label style={{fontWeight:700}}>생년월일 6자리
-    <input type="password" inputMode="numeric" autoComplete="off" minLength={6} maxLength={6} pattern="[0-9]{6}" required placeholder="예: 901231" value={login.birth6} onChange={e=>setLogin(v=>({...v,birth6:e.target.value.replace(/\\D/g,'').slice(0,6)}))} style={{display:'block',marginTop:5,width:'100%',boxSizing:'border-box',border:'1px solid #b9cdbd',borderRadius:10,padding:13,fontSize:16}}/>
+    <input type="password" inputMode="numeric" autoComplete="off" minLength={6} maxLength={6} pattern="[0-9]{6}" required placeholder="예: 901231" value={login.birth6} onChange={e=>setLogin(v=>({...v,birth6:e.target.value.replace(/[^0-9]/g,'').slice(0,6)}))} style={{display:'block',marginTop:5,width:'100%',boxSizing:'border-box',border:'1px solid #b9cdbd',borderRadius:10,padding:13,fontSize:16}}/>
    </label>
    <button type="submit" disabled={busy} style={{...btn,width:'100%',fontSize:16,padding:15}}>{busy?'로그인 확인 중...':'기존 계정으로 로그인하고 7KM 이어가기 →'}</button>
   </form>
