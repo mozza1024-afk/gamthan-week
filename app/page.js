@@ -479,6 +479,11 @@ export default function Home() {
         data.token
       );
 
+      if (new URLSearchParams(window.location.search).get('restart') === '1') {
+        window.location.assign('/restart');
+        return;
+      }
+
       go(
         'dashboard'
       );
