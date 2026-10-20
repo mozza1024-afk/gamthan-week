@@ -1544,6 +1544,15 @@ export default function Home() {
 
               </div>
 
+              {dash?.participant?.status === 'ended' && !dash?.participant?.isCompleted && (
+                <div className="notice" style={{padding:20,marginBottom:20,borderRadius:18,background:'#edfaef',border:'1px solid #b9dfc2'}}>
+                  <strong style={{display:'block',fontSize:20,marginBottom:7}}>🌱 7KM 다시출발 마라톤</strong>
+                  <p style={{margin:'0 0 12px'}}>아쉽게 기존 코스를 완주하지 못하셨나요? 개별 안내 문자를 받은 분은 10월 25일까지 원하는 출발일을 선택해 다시 7KM에 도전할 수 있어요.</p>
+                  <p style={{margin:'0 0 12px',fontWeight:700}}>☕ 7KM 완주 시 음료 쿠폰 지급 · 온기동행 공모전 참여 기회</p>
+                  <a href="/restart" className="button primary" style={{display:'block',textAlign:'center',textDecoration:'none',padding:14}}>7KM 다시출발 도전하기 →</a>
+                </div>
+              )}
+
               <div className="summary-card">
 
                 <div>
