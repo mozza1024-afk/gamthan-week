@@ -29,6 +29,19 @@ export async function POST(request){
    const start=String(b.startDate||'');
    if(!/^2026-10-(2[0-5])$/.test(start)||start<c.today)return error('오늘부터 10월 25일 사이의 출발일을 선택해 주세요.');
    await dbRequest('restart_attempts',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({participant_id:c.p.id,start_date:start})});
+  } else if(kind==='change-start'){
+   // 기존 신청 및 일기 기록을 보존하며, 시작 전이고 작성한 일기가 없는 경우에만 출발일 변경.
+   if(!c.attempt)return error('기존 다시출발 신청을 찾을 수 없습니다.');
+   if(c.attempt.status!=='active'||c.diaries.length>0)return error('감탄일기를 작성한 뒤에는 출발일을 변경할 수 없습니다.');
+   if(c.today>=c.attempt.start_date)return error('이미 출발한 마라톤은 시작일을 변경할 수 없습니다.');
+   const start=String(b.startDate||'');
+   if(!/^2026-10-(2[0-5])$/.test(start)||start<c.today)return error('오늘부터 10월 25일 사이의 출발일만 선택할 수 있습니다.');
+   if(start===c.attempt.start_date)return error('기존 출발일과 같은 날짜입니다.');
+   const updated=await dbRequest(
+     'restart_attempts?select=id,start_date,end_date&id=eq.'+enc(c.attempt.id)+'&participant_id=eq.'+enc(c.p.id)+'&start_date=eq.'+enc(c.attempt.start_date)+'&status=eq.active',
+     {method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({start_date:start})}
+   );
+   if(!Array.isArray(updated)||updated.length!==1)return error('변경 중 다른 요청이 처리되었습니다. 새로고침 후 다시 확인해 주세요.',409);
   } else if(kind==='diary'){
    if(!c.attempt||c.attempt.status==='cancelled')return error('재도전 신청을 먼저 해주세요.');
    const today=c.today;
