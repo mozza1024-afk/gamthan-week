@@ -1550,19 +1550,21 @@ export default function Home() {
               </div>
 
               {dash?.participant?.status === 'ended' && !dash?.participant?.isCompleted && (
-                <div className="notice" style={{padding:20,marginBottom:20,borderRadius:18,background:'#edfaef',border:'1px solid #b9dfc2'}}>
-                  <strong style={{display:'block',fontSize:20,marginBottom:7}}>🌱 7KM 다시출발 마라톤</strong>
-                  <p style={{margin:'0 0 12px'}}>기존 코스의 ‘기간 종료’ 표시는 그대로 유지됩니다. 7KM를 이미 신청했다면 아래 버튼으로 재도전 현황과 감탄일기를 확인하세요. 아직 신청 전이라면 출발일을 선택할 수 있어요.</p>
-                  <p style={{margin:'0 0 12px',fontWeight:700}}>☕ 7KM 완주 시 음료 쿠폰 지급 · 온기동행 공모전 참여 기회</p>
-                  <a href="/restart" className="button primary" style={{display:'block',textAlign:'center',textDecoration:'none',padding:14}}>7KM 다시출발 현황 · 감탄일기 쓰기 →</a>
-                </div>
+                <section aria-label="7KM 다시출발 전용 바로가기" style={{padding:22,marginBottom:24,borderRadius:20,background:'#173d2b',border:'2px solid #f3c83e',color:'#fff',boxShadow:'0 6px 16px rgba(0,0,0,.12)'}}>
+                  <span style={{display:'inline-block',fontWeight:800,fontSize:13,padding:'6px 11px',borderRadius:30,background:'#f5cd45',color:'#193a25'}}>🌱 새로운 도전 · 7KM</span>
+                  <h3 style={{fontSize:23,lineHeight:1.3,margin:'14px 0 10px',color:'#fff'}}>7KM 다시출발 마라톤</h3>
+                  <p style={{fontSize:15,lineHeight:1.65,color:'#e7f4e8',margin:'0 0 16px'}}>기존 14·21·28KM 등 지난 기록과 별도로 새로운 7KM를 진행합니다. 이미 다시출발을 신청했다면 아래 버튼에서 일기를 쓰고 저장 기록을 확인하세요.</p>
+                  <a href="/restart" style={{display:'block',background:'#ffd33d',color:'#1e2e22',textAlign:'center',textDecoration:'none',padding:'18px 12px',borderRadius:13,fontSize:19,fontWeight:900,boxShadow:'0 3px 0 #c59f1a'}}>✍️ 7KM 감탄일기 바로가기 →</a>
+                  <p style={{fontSize:13,color:'#f2ead0',margin:'14px 0 0'}}>📖 나의 7KM 실천 기록 보기 · ☕ 완주 시 음료 쿠폰 지급</p>
+                </section>
               )}
 
+              <p style={{color:'#607568',fontSize:13,fontWeight:700,margin:'8px 0 10px'}}>아래는 새 7KM가 아닌, 처음 신청한 코스의 기록입니다.</p>
               <div className="summary-card">
 
                 <div>
                   <span>
-                    참여 상태
+                    지난 도전 참여 상태
                   </span>
 
                   <strong>
@@ -1590,7 +1592,7 @@ export default function Home() {
 
                 <div>
                   <span>
-                    참여 코스
+                    지난 도전 코스
                   </span>
 
                   <strong>
@@ -1606,7 +1608,7 @@ export default function Home() {
 
                 <div>
                   <span>
-                    실천 기간
+                    지난 도전 기간
                   </span>
 
                   <strong>
@@ -1740,7 +1742,7 @@ export default function Home() {
                 {
                   dash?.todayDiary
                     ? '오늘의 감탄일기 수정하기'
-                    : '오늘의 감탄일기 쓰기'
+                    : dash?.participant?.status === 'ended' ? '지난 도전은 기간이 종료되었습니다' : '오늘의 감탄일기 쓰기'
                 }
               </button>
 
@@ -1879,7 +1881,7 @@ export default function Home() {
                 <div className="section-heading">
 
                   <h3>
-                    나의 기록
+                    지난 도전 감탄일기 기록
                   </h3>
 
                   <span>
