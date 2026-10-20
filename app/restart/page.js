@@ -9,7 +9,7 @@ const topics=[['marathon','감탄위크 실천 소감'],['daily','일상 속 탄
 export default function Restart(){
  const [token,setToken]=useState(''),[data,setData]=useState(null),[start,setStart]=useState(''),[codes,setCodes]=useState([]),[diary,setDiary]=useState(''),[other,setOther]=useState(''),[essay,setEssay]=useState({topic:'marathon',title:'',body:''}),[err,setErr]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>{setToken(localStorage.getItem('gamthan_token')||'')},[]);
- async function load(){if(!token)return;try{setData(await fetchApi(token));setErr('')}catch(e){setErr(e.message)}}
+ async function load(){if(!token)return;try{setData(await fetchApi(token));setErr('')}catch(e){if(/로그인 시간이 만료|로그인이 필요/.test(e.message)){localStorage.removeItem('gamthan_token');setToken('');setData(null);setErr('로그인 시간이 만료되었습니다. 기존 참가자 계정으로 다시 로그인해 주세요.')}else setErr(e.message)}}
  useEffect(()=>{if(token)load()},[token]);
  useEffect(()=>{if(data?.essay)setEssay({topic:data.essay.topic||'marathon',title:data.essay.title||'',body:data.essay.body||''})},[data?.essay?.id]);
  async function save(body){try{setBusy(true);setErr('');await fetchApi(token,body);await load();alert(body.kind==='essay'?(body.submit?'공모전 제출이 완료되었습니다.':'임시저장되었습니다.'):'저장되었습니다.')}catch(e){setErr(e.message)}finally{setBusy(false)}}
@@ -20,12 +20,19 @@ export default function Restart(){
  const card={background:'#fff',border:'1px solid #dce8dd',borderRadius:16,padding:20,margin:'16px 0'};
  const btn={background:'#24744f',border:0,color:'white',borderRadius:10,padding:'13px 18px',cursor:'pointer',fontWeight:700};
  return <main style={{maxWidth:660,margin:'0 auto',padding:'24px 16px 80px',fontFamily:'system-ui,sans-serif',color:'#253b31',background:'#f7faf7',minHeight:'100vh'}}>
- <a href="/" style={{color:'#24744f'}}>← 감탄위크 홈</a>
- <h1>🌱 7KM 다시출발 마라톤</h1>
- <p>멈췄던 실천, 다시 시작해요! 개별 안내 문자를 받으신 기존 참가자 대상 프로그램입니다.</p>
- <div style={card}><b>☕ 7일 완주 시 음료 쿠폰 지급</b><p>완주 후 온기동행 탄소중립 실천·생각 공모전에 참여할 수 있어요. 우수작에는 소정의 상품이 제공되며 별도 시상식이 열립니다.</p></div>
- {!token&&<div style={card}>기존 감탄위크 참가자 로그인이 필요해요.<p><a href="/">홈에서 먼저 로그인하기 →</a></p></div>}
- {err&&<div role="alert" style={{...card,color:'#b42424'}}>{err}</div>}
+ <a href="/" style={{color:'#16804d',fontWeight:700,textDecoration:'none'}}>← 처음 화면으로</a>
+ <section style={{...card,textAlign:'center',borderRadius:25,marginTop:22,padding:'25px 20px'}}>
+ <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:12}}><span style={{background:'#ddf7e8',color:'#16804d',padding:'5px 10px',borderRadius:20}}>다시 도전할 기회!</span><span style={{color:'#6b8075'}}>감탄위크 실천마라톤</span></div>
+ <div style={{fontSize:36,color:'#169954',marginTop:12}}>♧</div>
+ <h1 style={{fontSize:26,margin:'3px 0 5px'}}>7KM 다시출발 마라톤</h1>
+ <p style={{color:'#68766c',margin:'0 0 22px'}}>다시 시작하는 7일, 다시 만나는 완주의 기쁨!</p>
+ <div style={{textAlign:'left',padding:'12px 0',borderBottom:'1px solid #e2ebe3',display:'flex',gap:16,alignItems:'center'}}><span style={{fontSize:26}}>☕</span><div><strong>7KM 완주 시 음료 쿠폰 지급!</strong><p style={{color:'#68766c',margin:'5px 0'}}>다시출발 마라톤도 완주하면 음료 쿠폰을 받을 수 있어요.</p></div></div>
+ <div style={{textAlign:'left',padding:'15px 0',display:'flex',gap:16,alignItems:'center'}}><span style={{fontSize:26}}>🏅</span><div><strong>완주자 대상 소감문 공모전 참여 기회!</strong><p style={{color:'#68766c',margin:'5px 0'}}>소정의 상품과 별도 시상식도 준비되어 있어요.</p></div></div>
+ <div style={{textAlign:'left',paddingTop:8}}><strong>참여 안내</strong><ul style={{lineHeight:1.9,paddingLeft:24}}><li>기존 마라톤 미완주자 중 문자 안내를 받은 분 대상</li><li>다시 1일차부터 7일간 실천</li><li>기존 도전 기록은 별도로 보존</li><li>완주 후 소감문 공모전은 선택 참여</li><li>소감문은 임시저장 가능, 11월 16일까지 제출</li></ul></div>
+ <p style={{fontSize:12,color:'#7b867d'}}>개별 안내 문자를 받으신 분에 한해 참여해 주세요.</p>
+ </section>
+ {!token&&<div style={{...card,textAlign:'center'}}><strong>기존 참가자 로그인이 필요해요.</strong><p>기존 계정으로 다시 로그인한 뒤 이 화면으로 돌아와 주세요.</p><a href="/" style={{...btn,display:'block',textDecoration:'none'}}>기존 참가자 다시 로그인하기 →</a></div>}
+ {err&&<div role="alert" style={{...card,color:'#b42424'}}>{err}{!token&&<p><a href="/">기존 참가자 로그인 화면으로 이동 →</a></p>}</div>}
  {data&&<><div style={card}><h2>{data.p.display_name} 님의 다시출발</h2><p>기존 {data.p.course_days}KM 기록은 그대로 유지됩니다.</p>
  {!attempt? <>{data.eligible?<><p>원하는 출발일을 선택해 주세요. 10월 31일까지 7일간 실천해야 해요.</p><label>출발일 <select value={start} onChange={e=>setStart(e.target.value)}><option value="">날짜 선택</option>{dates().map(d=><option key={d} value={d}>{d}</option>)}</select></label><p><button disabled={!start||busy} style={btn} onClick={()=>save({kind:'join',startDate:start})}>7KM 다시출발 신청</button></p></>:<p>기존 코스 종료 후 미완주가 확정된 분만 신청할 수 있어요. 현재 기존 코스는 그대로 이어가 주세요.</p>}</>:<><p><b>출발일:</b> {attempt.start_date} / <b>완주 예정:</b> {attempt.end_date}</p><h3>{diaries.length} / 7KM</h3><progress value={diaries.length} max={7} style={{width:'100%'}}/>{completed&&<p>🎉 7KM 완주! 음료 쿠폰 지급 대상입니다. 쿠폰 지급 일정은 운영자 안내를 확인해 주세요.</p>}</>}
  </div>
