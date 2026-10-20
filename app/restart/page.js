@@ -8,9 +8,30 @@ const dates=()=>{const now=new Date(Date.now()+9*3600000).toISOString().slice(0,
 const topics=[['marathon','감탄위크 실천 소감'],['daily','일상 속 탄소중립'],['climate','기후위기와 우리의 삶'],['wonju','원주시 기후정책 제안'],['free','환경·지속가능성 자유주제']];
 export default function Restart(){
  const diaryRef=useRef(null);
- const [token,setToken]=useState(''),[data,setData]=useState(null),[start,setStart]=useState(''),[codes,setCodes]=useState([]),[diary,setDiary]=useState(''),[other,setOther]=useState(''),[essay,setEssay]=useState({topic:'marathon',title:'',body:''}),[err,setErr]=useState(''),[busy,setBusy]=useState(false);
+ const [token,setToken]=useState(''),[login,setLogin]=useState({phone:'',birth6:''}),[data,setData]=useState(null),[start,setStart]=useState(''),[codes,setCodes]=useState([]),[diary,setDiary]=useState(''),[other,setOther]=useState(''),[essay,setEssay]=useState({topic:'marathon',title:'',body:''}),[err,setErr]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>{setToken(localStorage.getItem('gamthan_token')||'')},[]);
  async function load(){if(!token)return;try{setData(await fetchApi(token));setErr('')}catch(e){if(/로그인 시간이 만료|로그인이 필요/.test(e.message)){localStorage.removeItem('gamthan_token');setToken('');setData(null);setErr('로그인 시간이 만료되었습니다. 기존 참가자 계정으로 다시 로그인해 주세요.')}else setErr(e.message)}}
+
+ async function loginHere(event){
+  event.preventDefault();
+  if(busy)return;
+  setBusy(true);
+  setErr('');
+  try {
+   const response=await fetch('/api?path=login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:login.phone,birth6:login.birth6})
+   });
+   const result=await response.json().catch(()=>({success:false,message:'서버 응답을 읽을 수 없습니다.'}));
+   if(!response.ok||result.success===false||!result.token)throw Error(result.message||'로그인에 실패했습니다.');
+   localStorage.setItem('gamthan_token',result.token);
+   setData(null);
+   setLogin({phone:'',birth6:''});
+   setToken(result.token);
+  }catch(e){setErr(e.message);}
+  finally{setBusy(false);}
+ }
  useEffect(()=>{if(token)load()},[token]);
  useEffect(()=>{if(data?.essay)setEssay({topic:data.essay.topic||'marathon',title:data.essay.title||'',body:data.essay.body||''})},[data?.essay?.id]);
  async function save(body){try{setBusy(true);setErr('');await fetchApi(token,body);await load();if(body.kind==='join'){setTimeout(()=>diaryRef.current?.scrollIntoView({behavior:'smooth',block:'start'}),100)}else alert(body.kind==='essay'?(body.submit?'공모전 제출이 완료되었습니다.':'임시저장되었습니다.'):'저장되었습니다.')}catch(e){setErr(e.message)}finally{setBusy(false)}}
@@ -32,8 +53,20 @@ export default function Restart(){
  <div style={{textAlign:'left',paddingTop:8}}><strong>참여 안내</strong><ul style={{lineHeight:1.9,paddingLeft:24}}><li>기존 마라톤 미완주자 중 문자 안내를 받은 분 대상</li><li>다시 1일차부터 7일간 실천</li><li>기존 도전 기록은 별도로 보존</li><li>완주 후 소감문 공모전은 선택 참여</li><li>소감문은 임시저장 가능, 11월 16일까지 제출</li></ul></div>
  <p style={{fontSize:12,color:'#7b867d'}}>개별 안내 문자를 받으신 분에 한해 참여해 주세요.</p>
  </section>
- {!token&&<div style={{...card,textAlign:'center'}}><strong>기존 참가자 로그인이 필요해요.</strong><p>기존 계정으로 다시 로그인한 뒤 이 화면으로 돌아와 주세요.</p><a href="/?restart=1" style={{...btn,display:'block',textDecoration:'none'}}>기존 참가자 다시 로그인하기 →</a></div>}
- {err&&<div role="alert" style={{...card,color:'#b42424'}}>{err}{!token&&<p><a href="/?restart=1">기존 참가자 로그인 화면으로 이동 →</a></p>}</div>}
+ {!token&&<section style={{...card,padding:24}}>
+  <h2 style={{marginTop:0}}>기존 참가자 로그인</h2>
+  <p style={{fontSize:14,color:'#64746b'}}>다른 화면으로 이동할 필요 없이 여기서 로그인하세요. 이미 다시출발을 신청했다면 신청 기록과 7KM 감탄일기가 바로 나타납니다.</p>
+  <form onSubmit={loginHere} style={{display:'grid',gap:14}}>
+   <label style={{fontWeight:700}}>휴대전화번호
+    <input type="tel" inputMode="tel" autoComplete="tel" required placeholder="01012345678" value={login.phone} onChange={e=>setLogin(v=>({...v,phone:e.target.value}))} style={{display:'block',marginTop:5,width:'100%',boxSizing:'border-box',border:'1px solid #b9cdbd',borderRadius:10,padding:13,fontSize:16}}/>
+   </label>
+   <label style={{fontWeight:700}}>생년월일 6자리
+    <input type="password" inputMode="numeric" autoComplete="off" minLength={6} maxLength={6} pattern="[0-9]{6}" required placeholder="예: 901231" value={login.birth6} onChange={e=>setLogin(v=>({...v,birth6:e.target.value.replace(/\\D/g,'').slice(0,6)}))} style={{display:'block',marginTop:5,width:'100%',boxSizing:'border-box',border:'1px solid #b9cdbd',borderRadius:10,padding:13,fontSize:16}}/>
+   </label>
+   <button type="submit" disabled={busy} style={{...btn,width:'100%',fontSize:16,padding:15}}>{busy?'로그인 확인 중...':'기존 계정으로 로그인하고 7KM 이어가기 →'}</button>
+  </form>
+ </section>}
+ {err&&<div role="alert" style={{...card,color:'#b42424'}}>{err}</div>}
  {data&&<><div ref={diaryRef} style={{scrollMarginTop:20,...card}}><h2>{data.p.display_name} 님의 다시출발</h2><p>기존 {data.p.course_days}KM 기록은 그대로 유지됩니다.</p>
  {!attempt? <>{data.eligible?<><p>원하는 출발일을 선택해 주세요. 10월 31일까지 7일간 실천해야 해요.</p><label>출발일 <select value={start} onChange={e=>setStart(e.target.value)}><option value="">날짜 선택</option>{dates().map(d=><option key={d} value={d}>{d}</option>)}</select></label><p><button disabled={!start||busy} style={btn} onClick={()=>save({kind:'join',startDate:start})}>7KM 다시출발 신청</button></p></>:<p>기존 코스 종료 후 미완주가 확정된 분만 신청할 수 있어요. 현재 기존 코스는 그대로 이어가 주세요.</p>}</>:<><p><b>출발일:</b> {attempt.start_date} / <b>완주 예정:</b> {attempt.end_date}</p><h3>{diaries.length} / 7KM</h3><progress value={diaries.length} max={7} style={{width:'100%'}}/>{canDiary?<><p style={{color:'#24744f',fontWeight:700}}>✅ 신청 완료! 오늘부터 감탄일기를 작성할 수 있어요.</p><button style={btn} onClick={()=>document.getElementById('restart-diary')?.scrollIntoView({behavior:'smooth',block:'start'})}>오늘의 감탄일기 쓰기 ↓</button></>:!completed?<p style={{background:'#fff4d6',padding:12,borderRadius:10}}>✅ 다시출발 신청이 완료됐어요. 선택한 출발일인 <b>{attempt.start_date}</b>부터 감탄일기를 작성할 수 있습니다. 그날 다시 접속해 주세요.</p>:null}{completed&&<p>🎉 7KM 완주! 음료 쿠폰 지급 대상입니다. 쿠폰 지급 일정은 운영자 안내를 확인해 주세요.</p>}</>}
  </div>
