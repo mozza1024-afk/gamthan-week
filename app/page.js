@@ -1549,12 +1549,13 @@ export default function Home() {
 
               </div>
 
-              {dash?.participant?.status === 'ended' && !dash?.participant?.isCompleted && (
+              {dash?.restart?.eligible === true && (
                 <section aria-label="7KM 다시출발 전용 바로가기" style={{padding:22,marginBottom:24,borderRadius:20,background:'#173d2b',border:'2px solid #f3c83e',color:'#fff',boxShadow:'0 6px 16px rgba(0,0,0,.12)'}}>
                   <span style={{display:'inline-block',fontWeight:800,fontSize:13,padding:'6px 11px',borderRadius:30,background:'#f5cd45',color:'#193a25'}}>🌱 새로운 도전 · 7KM</span>
                   <h3 style={{fontSize:23,lineHeight:1.3,margin:'14px 0 10px',color:'#fff'}}>7KM 다시출발 마라톤</h3>
-                  <p style={{fontSize:15,lineHeight:1.65,color:'#e7f4e8',margin:'0 0 16px'}}>기존 14·21·28KM 등 지난 기록과 별도로 새로운 7KM를 진행합니다. 이미 다시출발을 신청했다면 아래 버튼에서 일기를 쓰고 저장 기록을 확인하세요.</p>
+                  <p style={{fontSize:15,lineHeight:1.65,color:'#e7f4e8',margin:'0 0 16px'}}>기존 기록은 그대로 보존됩니다. 28KM 진행 중이라도 남은 날짜에 매일 작성해도 기존 완주가 불가능해진 경우, 7KM로 다시 도전할 수 있어요. 이미 신청했다면 아래 버튼에서 일기와 저장 기록을 확인하세요.</p>
                   <a href="/restart" style={{display:'block',background:'#ffd33d',color:'#1e2e22',textAlign:'center',textDecoration:'none',padding:'18px 12px',borderRadius:13,fontSize:19,fontWeight:900,boxShadow:'0 3px 0 #c59f1a'}}>✍️ 7KM 감탄일기 바로가기 →</a>
+                  {dash?.restart?.reason === '28km_unreachable' && <p style={{color:'#faeaa4',fontSize:13,fontWeight:700,margin:'0 0 11px'}}>28KM 도전 기간은 남아 있지만, 현재 기록과 남은 날짜를 기준으로 28KM 완주가 어려워 7KM 다시출발 자격이 생겼어요.</p>}
                   <p style={{fontSize:13,color:'#f2ead0',margin:'14px 0 0'}}>📖 나의 7KM 실천 기록 보기 · ☕ 완주 시 음료 쿠폰 지급</p>
                 </section>
               )}
