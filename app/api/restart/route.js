@@ -1,4 +1,5 @@
 import {dbRequest,effectiveToday,requireParticipant,json} from '../../../lib/server.js';
+import {restartEligibility} from '../../../lib/restart-eligibility.js';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const enc=x=>encodeURIComponent(String(x??''));
@@ -8,13 +9,15 @@ async function context(request){
  const s=await requireParticipant(request);
  const [rows,today]=await Promise.all([dbRequest('participants?select=id,display_name,status,course_days,start_date,end_date,is_completed&id=eq.'+enc(s.sub)+'&limit=1'),effectiveToday()]);
  const p=rows?.[0];if(!p||p.status==='cancelled')throw Error('유효한 기존 참가자만 신청할 수 있습니다.');
- const [attempts,essay]=await Promise.all([
+ const [attempts,essay,originalDiaries]=await Promise.all([
  dbRequest('restart_attempts?select=*&participant_id=eq.'+enc(p.id)+'&limit=1'),
- dbRequest('ongi_essays?select=*&participant_id=eq.'+enc(p.id)+'&limit=1')
+ dbRequest('ongi_essays?select=*&participant_id=eq.'+enc(p.id)+'&limit=1'),
+ dbRequest('diaries?select=diary_date&participant_id=eq.'+enc(p.id)+'&order=diary_date.asc')
  ]);
  const attempt=attempts?.[0]||null;
  const diaries=attempt?await dbRequest('restart_diaries?select=diary_date,day_number,diary_text,action_codes,other_action_text&attempt_id=eq.'+enc(attempt.id)+'&order=day_number.asc'):[];
- return {p,today,attempt,diaries,essay:essay?.[0]||null,eligible:!p.is_completed&&today>p.end_date};
+ const eligibility=restartEligibility(p,originalDiaries,today);
+ return {p,today,attempt,diaries,essay:essay?.[0]||null,eligible:eligibility.eligible,eligibility};
 }
 export async function GET(request){
  try{const c=await context(request);const actions=await dbRequest('actions?select=action_code,action_name&is_active=eq.true&order=sort_order.asc');return json({success:true,...c,actions});}
@@ -25,7 +28,7 @@ export async function POST(request){
   const c=await context(request);const b=await request.json();const kind=String(b.kind||'');
   if(kind==='join'){
    if(c.attempt)return error('이미 다시출발을 신청하셨습니다.');
-   if(!c.eligible)return error('기존 코스가 종료되고 미완주가 확정된 참여자만 신청할 수 있습니다.');
+   if(!c.eligible)return error('기존 코스의 미완주가 확정되었거나 28KM 완주가 불가능해진 기존 참가자만 신청할 수 있습니다.');
    const start=String(b.startDate||'');
    if(!/^2026-10-(2[0-5])$/.test(start)||start<c.today)return error('오늘부터 10월 25일 사이의 출발일을 선택해 주세요.');
    await dbRequest('restart_attempts',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({participant_id:c.p.id,start_date:start})});
