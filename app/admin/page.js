@@ -20,6 +20,9 @@ export default function AdminPage(){
   const [setup,setSetup]=useState({setupCode:'',email:'',displayName:'',password:''});
   const [showSetup,setShowSetup]=useState(false);
   const [data,setData]=useState(null);
+  const [restartStats,setRestartStats]=useState(null);
+  const [restartBusy,setRestartBusy]=useState(false);
+  const [restartError,setRestartError]=useState('');
   const [tab,setTab]=useState('today');
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState('');
@@ -57,6 +60,7 @@ export default function AdminPage(){
       setBusy(true);
       const d=await api('admin/data',{headers:auth(token)});
       setData(d);
+      loadRestart();
       setSettings({
         APPLICATION_START_DATE:d.settings.APPLICATION_START_DATE||'',
         APPLICATION_END_DATE:d.settings.APPLICATION_END_DATE||'',
@@ -72,6 +76,22 @@ export default function AdminPage(){
       if(e.message.includes('로그인'))logout();
     }finally{
       setBusy(false);
+    }
+  }
+
+  async function loadRestart(){
+    if(!token)return;
+    setRestartBusy(true);
+    try {
+      const res=await fetch('/api/restart/admin',{headers:auth(token),cache:'no-store'});
+      const stats=await res.json().catch(()=>({success:false,message:'서버 응답을 읽을 수 없습니다.'}));
+      if(!res.ok||stats.success===false)throw Error(stats.message||'다시출발 현황 조회 실패');
+      setRestartStats(stats);
+      setRestartError('');
+    } catch(error){
+      setRestartError(error.message);
+    } finally {
+      setRestartBusy(false);
     }
   }
 
@@ -258,6 +278,7 @@ export default function AdminPage(){
       {[
         ['today','오늘 현황'],
         ['participants','참가자'],
+        ['restart','7KM 다시출발'],
         ['offline','오프라인 일기장'],
         ['settings','설정']
       ].map(([k,n])=><button key={k} className={`tab ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{n}</button>)}
@@ -296,6 +317,39 @@ export default function AdminPage(){
         </div>
       </section>
     </>}
+
+
+    {tab==='restart'&&<section className="admin-card">
+      <div className="section-heading">
+        <h3>🌱 7KM 다시출발 신청·활동 현황</h3>
+        <button className="mini-button" type="button" disabled={restartBusy} onClick={loadRestart}>{restartBusy?'새로고침 중...':'실시간 현황 새로고침'}</button>
+      </div>
+      <p className="panel-intro">앱에서 실제 저장된 재도전 신청·일기 기록 기준입니다. 문자 발송·수신·읽음·답장 건수는 포함되지 않습니다.</p>
+      {restartError&&<p role="alert" className="notice" style={{color:'#a32b2b'}}>현황 조회 오류: {restartError}</p>}
+      {restartStats?<div>
+        <div className="admin-grid" style={{margin:'16px 0'}}>
+          <div className="stat-card"><span>전체 재도전 신청</span><strong>{restartStats.stats.total}<small>명</small></strong></div>
+          <div className="stat-card"><span>오늘 신규 신청</span><strong>{restartStats.stats.newToday}<small>명</small></strong></div>
+          <div className="stat-card"><span>일기 1회 이상 작성</span><strong>{restartStats.stats.started}<small>명</small></strong></div>
+          <div className="stat-card"><span>재도전 7KM 완주</span><strong>{restartStats.stats.completed}<small>명</small></strong></div>
+        </div>
+        <p style={{fontWeight:700,color:'#41674b'}}>오늘 7KM 일기 작성: {restartStats.stats.wroteToday}명 · 누적 재도전 일기: {restartStats.stats.totalDiaries}건</p>
+        <p className="muted">집계 날짜: {restartStats.today} · 마지막 조회: {new Date(restartStats.asOf).toLocaleString('ko-KR')} (화면을 새로고침하면 최신 데이터 확인)</p>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>참가자</th><th>기존 코스</th><th>신청일</th><th>선택한 출발일</th><th>새 일기</th><th>진행 상태</th></tr></thead>
+            <tbody>{restartStats.rows.length?restartStats.rows.map(row=><tr key={row.id}>
+              <td>{row.name}<br/><small>{row.organization}</small></td>
+              <td>{row.originalCourse}KM</td>
+              <td>{row.appliedDate}</td>
+              <td>{row.startDate}</td>
+              <td>{row.completedDays}/7</td>
+              <td>{row.completed?'완주':row.recordedToday?'오늘 실천':'진행 중'}</td>
+            </tr>):<tr><td colSpan="6">아직 다시출발 신청 내역이 없습니다.</td></tr>}</tbody>
+          </table>
+        </div>
+      </div>:<p className="empty">{restartBusy?'현황을 조회하고 있습니다.':'7KM 다시출발 현황을 불러오려면 새로고침을 눌러주세요.'}</p>}
+    </section>}
 
     {tab==='participants'&&<section className="admin-card">
       <div className="section-heading">
