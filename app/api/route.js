@@ -3,6 +3,7 @@ import {
   normalizePhone, participantSession, readSettings, requireAdmin, requireParticipant,
   signedPhotoUrl, uploadPhoto, validBirth6, validPhone, verifyHash,
 } from '../../lib/server.js';
+import {restartEligibility} from '../../lib/restart-eligibility.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -1012,10 +1013,14 @@ async function participantDashboard(request) {
     );
 
 
+  const restart = restartEligibility(p, diaries, today);
+
   return json({
     success: true,
 
     today,
+
+    restart,
 
     participant: {
       id:
