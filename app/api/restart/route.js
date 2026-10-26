@@ -1,4 +1,4 @@
-import {dbRequest,effectiveToday,requireParticipant,json} from '../../../lib/server.js';
+import {dbRequest,effectiveToday,requireParticipant,json,signedPhotoUrl} from '../../../lib/server.js';
 import {restartEligibility} from '../../../lib/restart-eligibility.js';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -20,7 +20,7 @@ async function context(request){
  return {p,today,attempt,diaries,essay:essay?.[0]||null,eligible:eligibility.eligible,eligibility};
 }
 export async function GET(request){
- try{const c=await context(request);const actions=await dbRequest('actions?select=action_code,action_name&is_active=eq.true&order=sort_order.asc');return json({success:true,...c,actions});}
+ try{const c=await context(request);const [actions,photoUrl]=await Promise.all([dbRequest('actions?select=action_code,action_name&is_active=eq.true&order=sort_order.asc'),c.attempt? signedPhotoUrl('restart/'+c.attempt.id+'/practice.jpg'):Promise.resolve(null)]);return json({success:true,...c,actions,restartPhotoUrl:photoUrl});}
  catch(e){return error(e.message,e.status||500)}
 }
 export async function POST(request){
