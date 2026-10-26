@@ -214,6 +214,27 @@ export default function AdminPage(){
   const selectedDiaries=selected?(data?.diaries||[]).filter(d=>String(d.participant_id)===String(selected.id)):[];
   const selectedPhotos=selected?(data?.photos||[]).filter(p=>String(p.participant_id)===String(selected.id)):[];
 
+  function downloadRestartContacts(){
+    if(data?.admin?.role!=='super_admin')return;
+    const people=(restartStats?.rows||[]).filter(p=>p.contactPhone);
+    if(!people.length){say('다운로드할 재도전 신청자 연락처가 없습니다.');return;}
+    const quote=value=>'"'+String(value??'').replaceAll('"','""')+'"';
+    const headings=['이름','휴대전화번호','소속','기존 코스','7KM 출발일','일기 작성 수'];
+    const lines=[headings.join(','),...people.map(p=>[
+      p.name,p.contactPhone,p.organization,p.originalCourse,p.startDate,p.completedDays
+    ].map(quote).join(','))];
+    const content='\\ufeff'+lines.join('\\n');
+    const file=new Blob([content],{type:'text/csv;charset=utf-8'});
+    const href=URL.createObjectURL(file);
+    const link=document.createElement('a');
+    link.href=href;
+    link.download='7KM_다시출발_신청자_연락처.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(href),1000);
+  }
+
   function csv(type){
     const rows=type==='participants'?participants:(data?.diaries||[]);
     const cols=type==='participants'
@@ -322,7 +343,7 @@ export default function AdminPage(){
     {tab==='restart'&&<section className="admin-card">
       <div className="section-heading">
         <h3>🌱 7KM 다시출발 신청·활동 현황</h3>
-        <button className="mini-button" type="button" disabled={restartBusy} onClick={loadRestart}>{restartBusy?'새로고침 중...':'실시간 현황 새로고침'}</button>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{data?.admin?.role==='super_admin'&&<button className="mini-button" type="button" disabled={!restartStats?.rows?.length} onClick={downloadRestartContacts}>📱 재도전 신청자 연락처 CSV 다운로드</button>}<button className="mini-button" type="button" disabled={restartBusy} onClick={loadRestart}>{restartBusy?'새로고침 중...':'실시간 현황 새로고침'}</button></div>
       </div>
       <p className="panel-intro">앱에서 실제 저장된 재도전 신청·일기 기록 기준입니다. 문자 발송·수신·읽음·답장 건수는 포함되지 않습니다.</p>
       {restartError&&<p role="alert" className="notice" style={{color:'#a32b2b'}}>현황 조회 오류: {restartError}</p>}
