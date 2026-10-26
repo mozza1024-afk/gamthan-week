@@ -13,6 +13,7 @@ async function api(path, options={}){
 }
 const auth=t=>({Authorization:`Bearer ${t}`});
 const roleName=r=>r==='super_admin'?'명륜 전체관리자':'협력기관 관리자';
+const essayTopicLabels={marathon:'감탄위크 실천 소감',daily:'일상 속 탄소중립',climate:'기후위기와 우리의 삶',wonju:'원주시 기후정책 제안',free:'환경·지속가능성 자유주제'};
 
 export default function AdminPage(){
   const [token,setToken]=useState('');
@@ -477,7 +478,7 @@ export default function AdminPage(){
           </summary>
           <p className="muted" style={{margin:'12px 0 8px'}}>{e.organization||'기관 정보 없음'} · 기존 {e.originalCourse}KM · {e.restartStatus?'7KM 재도전 신청':'기존 도전 참가자'}</p>
           {e.status==='submitted'?<>
-            <p style={{margin:'8px 0'}}><strong>주제: </strong>{{marathon:'감탄위크 실천 소감',daily:'일상 속 탄소중립',climate:'기후위기와 우리의 삶',wonju:'원주시 기후정책 제안',free:'환경·지속가능성 자유주제'}[e.topic]||e.topic}</p>
+            <p style={{margin:'8px 0'}}><strong>주제: </strong>{essayTopicLabels[e.topic]||e.topic}</p>
             <p style={{margin:'8px 0'}}><strong>제출일: </strong>{e.submittedAt?new Date(e.submittedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):'-'} · {e.characterCount}자</p>
             <div style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.85,background:'#f6faf6',border:'1px solid #e1ebe2',padding:18,borderRadius:10}}>{e.body}</div>
           </>:<p style={{fontSize:14}}>아직 최종 제출하지 않았습니다. 참가자의 임시저장 원문은 조회하지 않습니다.</p>}
