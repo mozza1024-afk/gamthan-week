@@ -216,15 +216,14 @@ export default function AdminPage(){
 
   function downloadRestartContacts(){
     if(data?.admin?.role!=='super_admin')return;
-    const people=(restartStats?.rows||[]).filter(p=>p.contactPhone);
+    const people=(restartStats?.rows||[]).filter(p=>p.contactPhone&&p.status!=='cancelled');
     if(!people.length){say('다운로드할 재도전 신청자 연락처가 없습니다.');return;}
     const quote=value=>'"'+String(value??'').replaceAll('"','""')+'"';
     const headings=['이름','휴대전화번호','소속','기존 코스','7KM 출발일','일기 작성 수'];
     const lines=[headings.join(','),...people.map(p=>[
       p.name,p.contactPhone,p.organization,p.originalCourse,p.startDate,p.completedDays
     ].map(quote).join(','))];
-    const content='\\ufeff'+lines.join('\\n');
-    const file=new Blob([content],{type:'text/csv;charset=utf-8'});
+    const file=new Blob([String.fromCharCode(65279)+lines.join(String.fromCharCode(10))],{type:'text/csv;charset=utf-8'});
     const href=URL.createObjectURL(file);
     const link=document.createElement('a');
     link.href=href;
@@ -233,6 +232,19 @@ export default function AdminPage(){
     link.click();
     link.remove();
     setTimeout(()=>URL.revokeObjectURL(href),1000);
+  }
+
+  async function copyRestartPhones(){
+    if(data?.admin?.role!=='super_admin')return;
+    const phones=[...new Set((restartStats?.rows||[])
+      .filter(p=>p.status!=='cancelled')
+      .map(p=>String(p.contactPhone||'').replace(/[^0-9]/g,''))
+      .filter(p=>/^010[0-9]{8}$/.test(p)))];
+    if(!phones.length){say('복사할 재도전 신청자 전화번호가 없습니다.');return;}
+    try{
+      await navigator.clipboard.writeText(phones.join(String.fromCharCode(10)));
+      say('재도전 신청자 '+phones.length+'명의 전화번호를 복사했습니다.');
+    }catch(error){say('복사할 수 없습니다. 연락처 CSV 다운로드를 이용해 주세요.');}
   }
 
   function csv(type){
@@ -343,7 +355,7 @@ export default function AdminPage(){
     {tab==='restart'&&<section className="admin-card">
       <div className="section-heading">
         <h3>🌱 7KM 다시출발 신청·활동 현황</h3>
-        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{data?.admin?.role==='super_admin'&&<button className="mini-button" type="button" disabled={!restartStats?.rows?.length} onClick={downloadRestartContacts}>📱 재도전 신청자 연락처 CSV 다운로드</button>}<button className="mini-button" type="button" disabled={restartBusy} onClick={loadRestart}>{restartBusy?'새로고침 중...':'실시간 현황 새로고침'}</button></div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{data?.admin?.role==='super_admin'&&<button className="mini-button" type="button" disabled={!restartStats?.rows?.length} onClick={downloadRestartContacts}>📱 재도전 신청자 연락처 CSV 다운로드</button>}{data?.admin?.role==='super_admin'&&<button className="mini-button" type="button" disabled={!restartStats?.rows?.length} onClick={copyRestartPhones}>전화번호만 복사</button>}<button className="mini-button" type="button" disabled={restartBusy} onClick={loadRestart}>{restartBusy?'새로고침 중...':'실시간 현황 새로고침'}</button></div>
       </div>
       <p className="panel-intro">앱에서 실제 저장된 재도전 신청·일기 기록 기준입니다. 문자 발송·수신·읽음·답장 건수는 포함되지 않습니다.</p>
       {restartError&&<p role="alert" className="notice" style={{color:'#a32b2b'}}>현황 조회 오류: {restartError}</p>}
