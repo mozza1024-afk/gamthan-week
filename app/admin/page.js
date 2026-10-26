@@ -23,6 +23,11 @@ export default function AdminPage(){
   const [restartStats,setRestartStats]=useState(null);
   const [restartBusy,setRestartBusy]=useState(false);
   const [restartError,setRestartError]=useState('');
+  const [essayStats,setEssayStats]=useState(null);
+  const [essayBusy,setEssayBusy]=useState(false);
+  const [essayError,setEssayError]=useState('');
+  const [essayStatusFilter,setEssayStatusFilter]=useState('submitted');
+  const [essaySearch,setEssaySearch]=useState('');
   const [tab,setTab]=useState('today');
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState('');
@@ -61,6 +66,7 @@ export default function AdminPage(){
       const d=await api('admin/data',{headers:auth(token)});
       setData(d);
       loadRestart();
+      loadEssays();
       setSettings({
         APPLICATION_START_DATE:d.settings.APPLICATION_START_DATE||'',
         APPLICATION_END_DATE:d.settings.APPLICATION_END_DATE||'',
@@ -95,6 +101,51 @@ export default function AdminPage(){
     }
   }
 
+  async function loadEssays(){
+    if(!token)return;
+    setEssayBusy(true);
+    try{
+      const response=await fetch('/api/ongi/admin',{
+        headers:auth(token),
+        cache:'no-store'
+      });
+      const result=await response.json().catch(()=>({success:false,message:'서버 응답을 읽을 수 없습니다.'}));
+      if(!response.ok||result.success===false)throw Error(result.message||'수기공모전 접수 현황을 조회할 수 없습니다.');
+      setEssayStats(result);
+      setEssayError('');
+    }catch(e){
+      setEssayError(e.message);
+    }finally{
+      setEssayBusy(false);
+    }
+  }
+
+  function exportSubmittedEssays(){
+    const rows=(essayStats?.rows||[]).filter(e=>e.status==='submitted');
+    if(!rows.length){say('최종 제출된 공모전 원고가 없습니다.');return;}
+    const format=value=>{
+      const string=String(value??'');
+      // Avoid Excel formula injection from user-authored titles and manuscript text.
+      const safe=/^[\s\uFEFF]*[=+@-]/.test(string)?"'"+string:string;
+      return '"'+safe.replaceAll('"','""')+'"';
+    };
+    const header=['이름','소속기관','기존코스(KM)','주제','제목','수기 원문','글자 수','최종 제출일시'];
+    const topicLabels={marathon:'감탄위크 실천 소감',daily:'일상 속 탄소중립',climate:'기후위기와 우리의 삶',wonju:'원주시 기후정책 제안',free:'환경·지속가능성 자유주제'};
+    const lines=[header.join(','),...rows.map(e=>[
+      e.name,e.organization,e.originalCourse,topicLabels[e.topic]||e.topic,
+      e.title,e.body,e.characterCount,e.submittedAt
+    ].map(format).join(','))];
+    const file=new Blob([String.fromCharCode(65279)+lines.join(String.fromCharCode(10))],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(file);
+    const link=document.createElement('a');
+    link.href=url;
+    link.download='온기동행_수기공모전_최종제출작.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+
   async function doLogin(e){
     e.preventDefault();
     try{
@@ -121,6 +172,8 @@ export default function AdminPage(){
     localStorage.removeItem('gamthan_admin_token');
     setToken('');
     setData(null);
+    setEssayStats(null);
+    setRestartStats(null);
   }
 
   async function saveDist(e){
@@ -312,6 +365,7 @@ export default function AdminPage(){
         ['today','오늘 현황'],
         ['participants','참가자'],
         ['restart','7KM 다시출발'],
+        ['essays','🏆 수기공모전'],
         ['offline','오프라인 일기장'],
         ['settings','설정']
       ].map(([k,n])=><button key={k} className={`tab ${tab===k?'active':''}`} onClick={()=>setTab(k)}>{n}</button>)}
@@ -382,6 +436,55 @@ export default function AdminPage(){
           </table>
         </div>
       </div>:<p className="empty">{restartBusy?'현황을 조회하고 있습니다.':'7KM 다시출발 현황을 불러오려면 새로고침을 눌러주세요.'}</p>}
+    </section>}
+
+
+    {tab==='essays'&&<section className="admin-card">
+      <div className="section-heading">
+        <h3>🏆 온기동행 탄소중립 실천·생각 수기공모전</h3>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <button type="button" className="mini-button" disabled={!(essayStats?.stats?.submitted>0)} onClick={exportSubmittedEssays}>최종 제출작 CSV 내려받기</button>
+          <button type="button" className="mini-button" disabled={essayBusy} onClick={loadEssays}>{essayBusy?'조회 중...':'접수 현황 새로고침'}</button>
+        </div>
+      </div>
+      <p className="panel-intro">원래 코스 완주자와 7KM 다시출발 완주자가 제출한 작품을 함께 확인합니다. 수기공모전 마감일은 11월 16일입니다.</p>
+      {essayError&&<p role="alert" className="notice" style={{color:'#a32b2b'}}>조회 오류: {essayError}</p>}
+      {essayStats?<div>
+        <div className="admin-grid" style={{margin:'15px 0'}}>
+          <div className="stat-card"><span>🏆 최종 접수 작품</span><strong>{essayStats.stats.submitted}<small>건</small></strong></div>
+          <div className="stat-card"><span>💾 임시저장</span><strong>{essayStats.stats.drafts}<small>건</small></strong></div>
+        </div>
+        <div className="toolbar" style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+          <select aria-label="공모전 접수 상태" value={essayStatusFilter} onChange={e=>setEssayStatusFilter(e.target.value)}>
+            <option value="submitted">최종 제출작</option>
+            <option value="draft">임시저장 현황</option>
+            <option value="all">전체 현황</option>
+          </select>
+          <input placeholder="참가자·기관·제목 검색" value={essaySearch} onChange={e=>setEssaySearch(e.target.value)}/>
+        </div>
+        <p className="muted" style={{margin:'8px 0'}}>임시저장 원고는 미접수 상태라 작품 내용이 공개되지 않습니다. 최종 제출된 원고만 열람·다운로드할 수 있습니다.</p>
+        {(essayStats.rows||[]).filter(e=>
+          (essayStatusFilter==='all'||e.status===essayStatusFilter)&&
+          [e.name,e.organization,e.title].some(v=>String(v||'').toLowerCase().includes(essaySearch.trim().toLowerCase()))
+        ).length===0?<p className="empty">해당 조건에 맞는 수기공모전 기록이 없습니다.</p>:
+        <div style={{display:'grid',gap:10,marginTop:12}}>
+        {essayStats.rows.filter(e=>
+          (essayStatusFilter==='all'||e.status===essayStatusFilter)&&
+          [e.name,e.organization,e.title].some(v=>String(v||'').toLowerCase().includes(essaySearch.trim().toLowerCase()))
+        ).map(e=><details key={e.id} style={{border:'1px solid #dde8de',borderRadius:12,padding:'12px 15px',background:'#fff'}}>
+          <summary style={{cursor:'pointer',fontWeight:750,fontSize:16}}>
+            {e.status==='submitted'?'✅ 최종 제출':'💾 임시저장'} · {e.name} · {e.status==='submitted'?e.title:'작성 중'}
+          </summary>
+          <p className="muted" style={{margin:'12px 0 8px'}}>{e.organization||'기관 정보 없음'} · 기존 {e.originalCourse}KM · {e.restartStatus?'7KM 재도전 신청':'기존 도전 참가자'}</p>
+          {e.status==='submitted'?<>
+            <p style={{margin:'8px 0'}}><strong>주제: </strong>{{marathon:'감탄위크 실천 소감',daily:'일상 속 탄소중립',climate:'기후위기와 우리의 삶',wonju:'원주시 기후정책 제안',free:'환경·지속가능성 자유주제'}[e.topic]||e.topic}</p>
+            <p style={{margin:'8px 0'}}><strong>제출일: </strong>{e.submittedAt?new Date(e.submittedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):'-'} · {e.characterCount}자</p>
+            <div style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.85,background:'#f6faf6',border:'1px solid #e1ebe2',padding:18,borderRadius:10}}>{e.body}</div>
+          </>:<p style={{fontSize:14}}>아직 최종 제출하지 않았습니다. 참가자의 임시저장 원문은 조회하지 않습니다.</p>}
+        </details>)}
+        </div>
+        <p className="muted" style={{marginTop:12}}>마지막 조회: {new Date(essayStats.asOf).toLocaleString('ko-KR')} · 열람 권한은 관리자 소속 기관 기준으로 적용됩니다.</p>
+      </div>:<p className="empty">{essayBusy?'접수 현황을 불러오고 있습니다.':'접수 현황 새로고침 버튼을 눌러주세요.'}</p>}
     </section>}
 
     {tab==='participants'&&<section className="admin-card">
