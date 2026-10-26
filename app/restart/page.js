@@ -155,7 +155,7 @@ export default function Restart(){
     <input type="file" accept="image/*" disabled={photoBusy} onChange={e=>{setPracticePhoto(e.target.files?.[0]||null);setPhotoMessage('')}} style={{display:'block',maxWidth:'100%',boxSizing:'border-box',marginTop:9,fontSize:14}} />
    </label>
    {practicePhoto&&<p style={{fontSize:14,color:'#456655',margin:0}}>선택한 사진: {practicePhoto.name}</p>}
-   <button type="submit" disabled={!practicePhoto||photoBusy} style={{...btn,width:'100%',padding:15,fontSize:17,opacity:!practicePhoto||photoBusy?.6:1}}>{photoBusy?'사진을 압축하고 등록하는 중...':'📷 실천사진 1장 등록하기'}</button>
+   <button type="submit" disabled={!practicePhoto||photoBusy} style={{...btn,width:'100%',padding:15,fontSize:17,opacity:(!practicePhoto||photoBusy)?0.6:1}}>{photoBusy?'사진을 압축하고 등록하는 중...':'📷 실천사진 1장 등록하기'}</button>
   </form>}
   {photoMessage&&<p role="status" style={{padding:12,background:'#e3f7e7',borderRadius:10,color:'#17653b'}}>{photoMessage}</p>}
  </section>}
