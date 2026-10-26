@@ -5,10 +5,40 @@ const fetchApi=async(token,body)=>{
  const j=await r.json();if(!r.ok||j.success===false)throw Error(j.message||'요청 실패');return j;
 };
 const dates=()=>{const now=new Date(Date.now()+9*3600000).toISOString().slice(0,10);return Array.from({length:6},(_,i)=>'2026-10-'+String(i+20).padStart(2,'0')).filter(d=>d>=now)};
+// Compress phone-camera images before posting to the one-photo endpoint.
+async function prepareRestartPhoto(file){
+ if(!file||!String(file.type||'').startsWith('image/'))throw Error('사진 파일을 선택해 주세요.');
+ if(file.size>20*1024*1024)throw Error('20MB 이하 사진을 선택해 주세요.');
+ const source=URL.createObjectURL(file);
+ try{
+  const img=await new Promise((resolve,reject)=>{
+   const image=new Image();
+   image.onload=()=>resolve(image);
+   image.onerror=()=>reject(new Error('사진을 열 수 없습니다. JPG 또는 PNG 사진을 선택해 주세요.'));
+   image.src=source;
+  });
+  const canvas=document.createElement('canvas');
+  const maxSide=Math.max(img.naturalWidth,img.naturalHeight);
+  if(!maxSide)throw Error('사진 크기를 확인할 수 없습니다.');
+  const attempts=[{size:1250,q:.8},{size:1000,q:.7},{size:800,q:.58}];
+  for(const setting of attempts){
+   const ratio=Math.min(1,setting.size/maxSide);
+   canvas.width=Math.max(1,Math.round(img.naturalWidth*ratio));
+   canvas.height=Math.max(1,Math.round(img.naturalHeight*ratio));
+   const context=canvas.getContext('2d');
+   context.fillStyle='#fff';
+   context.fillRect(0,0,canvas.width,canvas.height);
+   context.drawImage(img,0,0,canvas.width,canvas.height);
+   const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',setting.q));
+   if(blob&&blob.size<=1024*1024&&blob.size>0)return new File([blob],'7km-practice.jpg',{type:'image/jpeg'});
+  }
+  throw Error('사진 압축에 실패했습니다. 조금 더 작은 사진을 선택해 주세요.');
+ }finally{URL.revokeObjectURL(source);}
+}
 const topics=[['marathon','감탄위크 실천 소감'],['daily','일상 속 탄소중립'],['climate','기후위기와 우리의 삶'],['wonju','원주시 기후정책 제안'],['free','환경·지속가능성 자유주제']];
 export default function Restart(){
  const diaryRef=useRef(null);
- const [token,setToken]=useState(''),[login,setLogin]=useState({phone:'',birth6:''}),[data,setData]=useState(null),[start,setStart]=useState(''),[codes,setCodes]=useState([]),[diary,setDiary]=useState(''),[other,setOther]=useState(''),[essay,setEssay]=useState({topic:'marathon',title:'',body:''}),[err,setErr]=useState(''),[busy,setBusy]=useState(false),[flash,setFlash]=useState('');
+ const [token,setToken]=useState(''),[login,setLogin]=useState({phone:'',birth6:''}),[data,setData]=useState(null),[practicePhoto,setPracticePhoto]=useState(null),[photoBusy,setPhotoBusy]=useState(false),[photoMessage,setPhotoMessage]=useState(''),[start,setStart]=useState(''),[codes,setCodes]=useState([]),[diary,setDiary]=useState(''),[other,setOther]=useState(''),[essay,setEssay]=useState({topic:'marathon',title:'',body:''}),[err,setErr]=useState(''),[busy,setBusy]=useState(false),[flash,setFlash]=useState('');
  useEffect(()=>{setToken(localStorage.getItem('gamthan_token')||'')},[]);
  async function load(){if(!token)return;try{setData(await fetchApi(token));setErr('')}catch(e){if(/로그인 시간이 만료|로그인이 필요/.test(e.message)){localStorage.removeItem('gamthan_token');setToken('');setData(null);setErr('로그인 시간이 만료되었습니다. 기존 참가자 계정으로 다시 로그인해 주세요.')}else setErr(e.message)}}
 
@@ -35,6 +65,25 @@ export default function Restart(){
  useEffect(()=>{if(token)load()},[token]);
  useEffect(()=>{if(data?.essay)setEssay({topic:data.essay.topic||'marathon',title:data.essay.title||'',body:data.essay.body||''})},[data?.essay?.id]);
  async function save(body){try{setBusy(true);setErr('');setFlash('');await fetchApi(token,body);await load();if(body.kind==='join'||body.kind==='change-start'){setTimeout(()=>diaryRef.current?.scrollIntoView({behavior:'smooth',block:'start'}),120)}else if(body.kind==='diary'){const updated=await fetchApi(token);setData(updated);const finished=updated.attempt?.status==='completed'||new Set((updated.diaries||[]).map(x=>x.day_number)).size===7;setFlash(finished?'🎉 7KM 완주! 일기 7건이 모두 저장되어 별도 최종 제출 없이 완주가 확정되었습니다.':'✅ 오늘의 7KM 감탄일기를 저장했어요! 아래에서 기록을 확인할 수 있습니다.');setTimeout(()=>document.getElementById(finished?'restart-finish':'restart-records')?.scrollIntoView({behavior:'smooth',block:'start'}),180)}else alert(body.kind==='essay'?(body.submit?'공모전 제출이 완료되었습니다.':'임시저장되었습니다.'):'저장되었습니다.')}catch(e){setErr(e.message)}finally{setBusy(false)}}
+ async function submitPracticePhoto(event){
+  event.preventDefault();
+  if(!practicePhoto||photoBusy||busy)return;
+  setPhotoBusy(true);
+  setPhotoMessage('');
+  setErr('');
+  try{
+   const jpeg=await prepareRestartPhoto(practicePhoto);
+   const form=new FormData();
+   form.append('photo',jpeg);
+   const response=await fetch('/api/restart/photo',{method:'POST',headers:{Authorization:'Bearer '+token},body:form});
+   const result=await response.json().catch(()=>({success:false,message:'서버 응답을 읽을 수 없습니다.'}));
+   if(!response.ok||result.success===false)throw Error(result.message||'사진 업로드에 실패했습니다.');
+   setPracticePhoto(null);
+   setPhotoMessage('✅ 실천사진 1장이 등록되었습니다. 7KM 완주 기록과 함께 안전하게 보관됩니다.');
+   await load();
+  }catch(e){setErr(e.message);}
+  finally{setPhotoBusy(false);}
+ }
  const attempt=data?.attempt,diaries=data?.diaries||[],completed=attempt?.status==='completed'||new Set(diaries.map(x=>x.day_number)).size===7;
  const canDiary=attempt&&data.today>=attempt.start_date&&data.today<=attempt.end_date;
  const todayDiary=diaries.find(x=>x.diary_date===data?.today);
@@ -82,6 +131,7 @@ export default function Restart(){
   <div style={{fontSize:28,fontWeight:900,color:'#13613d',lineHeight:1.4}}>🎉 7KM 다시출발 완주!</div>
   <p style={{fontSize:16,lineHeight:1.7,fontWeight:700,color:'#254a37'}}>1~7일차 감탄일기 7건이 모두 저장되어 <b>완주가 자동 확정</b>됐어요. 마라톤을 위해 추가로 '최종 제출' 버튼을 누를 필요는 없습니다.</p>
   <p style={{padding:'12px 14px',background:'#fff',borderRadius:10,fontWeight:700}}>☕ 7KM 완주 음료 쿠폰 지급 대상입니다. 쿠폰 지급 일정은 운영자 안내를 확인해 주세요.</p>
+  <button type="button" style={{...btn,background:'#276e4e',width:'100%',marginTop:5,padding:15}} onClick={()=>document.getElementById('restart-photo')?.scrollIntoView({behavior:'smooth',block:'start'})}>📸 나의 실천사진 1장 {data.restartPhotoUrl?'확인하기':'남기기'} →</button>
   <div style={{borderTop:'1px solid #addabc',marginTop:18,paddingTop:18}}>
    <strong style={{fontSize:19,color:'#16452e'}}>🏆 다음 도전! 나의 탄소중립 이야기 공모전</strong>
    <p style={{lineHeight:1.7,margin:'10px 0'}}>7일간의 실천이 어떤 변화를 만들었나요? 마라톤 소감이나 원주시 기후정책에 대한 생각을 글로 들려주세요. <b>우수작에는 상품과 별도 시상식</b>이 준비되어 있어요!</p>
@@ -90,6 +140,25 @@ export default function Restart(){
   </div>
  </section>}</>}
  </div>
+
+ {completed&&<section id="restart-photo" style={{...card,border:'2px solid #91cbb0',scrollMarginTop:16}}>
+  <div style={{display:'inline-block',background:'#e3f7e8',color:'#165f40',fontSize:13,fontWeight:800,borderRadius:30,padding:'6px 10px'}}>📸 7KM 완주 기념</div>
+  <h2 style={{fontSize:23,margin:'12px 0'}}>나의 탄소중립 실천사진 1장</h2>
+  <p style={{lineHeight:1.75}}>내가 실천한 탄소중립 행동을 보여주는 사진 <b>1장</b>을 남겨 보세요! 텀블러 사용, 걷기, 올바른 분리배출 등 어떤 실천도 좋아요. 얼굴이 나오지 않아도 됩니다.</p>
+  <p style={{background:'#f2f8f4',padding:12,borderRadius:10,fontSize:14}}>실천사진 등록은 <b>선택</b>이에요. 사진을 올리지 않아도 7일간 감탄일기를 작성했다면 7KM 완주와 음료 쿠폰 대상 자격이 유지됩니다.</p>
+  {data.restartPhotoUrl?<>
+   <p style={{fontWeight:800,color:'#1f7949'}}>✅ 실천사진 1장 등록 완료</p>
+   <img src={data.restartPhotoUrl} alt="내가 등록한 7KM 탄소중립 실천사진" style={{display:'block',width:'100%',maxHeight:380,objectFit:'contain',borderRadius:14,background:'#f2f5f0'}} />
+   <p style={{fontSize:13,color:'#647567'}}>실천사진은 재도전 기록에 별도로 보관되며 1장만 등록할 수 있어요.</p>
+  </>:<form onSubmit={submitPracticePhoto} style={{display:'grid',gap:12}}>
+   <label style={{display:'block',fontWeight:800}}>사진 선택 (1장)
+    <input type="file" accept="image/*" disabled={photoBusy} onChange={e=>{setPracticePhoto(e.target.files?.[0]||null);setPhotoMessage('')}} style={{display:'block',maxWidth:'100%',boxSizing:'border-box',marginTop:9,fontSize:14}} />
+   </label>
+   {practicePhoto&&<p style={{fontSize:14,color:'#456655',margin:0}}>선택한 사진: {practicePhoto.name}</p>}
+   <button type="submit" disabled={!practicePhoto||photoBusy} style={{...btn,width:'100%',padding:15,fontSize:17,opacity:!practicePhoto||photoBusy?.6:1}}>{photoBusy?'사진을 압축하고 등록하는 중...':'📷 실천사진 1장 등록하기'}</button>
+  </form>}
+  {photoMessage&&<p role="status" style={{padding:12,background:'#e3f7e7',borderRadius:10,color:'#17653b'}}>{photoMessage}</p>}
+ </section>}
 
  {attempt&&<section id="restart-records" style={{...card,scrollMarginTop:15,border:'2px solid #9acfac'}}>
   <h2 style={{margin:'0 0 8px',fontSize:23}}>📖 나의 7KM 다시출발 기록 <span style={{color:'#13834b'}}>{diaries.length}건</span></h2>
