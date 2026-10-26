@@ -18,7 +18,7 @@ export async function GET(request){
   const [attempts,diaries,participants]=await Promise.all([
    dbRequest('restart_attempts?select=id,participant_id,start_date,end_date,status,created_at,completed_at,coupon_status&order=created_at.desc'),
    dbRequest('restart_diaries?select=attempt_id,diary_date,day_number&order=diary_date.desc'),
-   dbRequest('participants?select=id,display_name,course_days,organization_id,organization_name_snapshot')
+   dbRequest('participants?select=id,display_name,phone,course_days,organization_id,organization_name_snapshot')
   ]);
   const allowed=new Map((participants||[]).filter(p=>
     admin.role==='super_admin'||String(p.organization_id)===String(admin.org)
@@ -38,6 +38,7 @@ export async function GET(request){
    return {
     id:a.id,
     name:p.display_name,
+    contactPhone:admin.role==='super_admin'?String(p.phone||'').replace(/[^0-9]/g,''):null,
     organization:p.organization_name_snapshot||'',
     originalCourse:p.course_days,
     startDate:a.start_date,
