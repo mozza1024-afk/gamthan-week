@@ -483,7 +483,7 @@ export default function AdminPage(){
             <div style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',lineHeight:1.85,background:'#f6faf6',border:'1px solid #e1ebe2',padding:18,borderRadius:10}}>{e.body}</div>
           </>:<p style={{fontSize:14}}>아직 최종 제출하지 않았습니다. 참가자의 임시저장 원문은 조회하지 않습니다.</p>}
         </details>)}
-        </div>
+        </div>}
         <p className="muted" style={{marginTop:12}}>마지막 조회: {new Date(essayStats.asOf).toLocaleString('ko-KR')} · 열람 권한은 관리자 소속 기관 기준으로 적용됩니다.</p>
       </div>:<p className="empty">{essayBusy?'접수 현황을 불러오고 있습니다.':'접수 현황 새로고침 버튼을 눌러주세요.'}</p>}
     </section>}
